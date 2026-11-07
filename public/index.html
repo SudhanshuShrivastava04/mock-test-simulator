@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assessment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/sql/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/selection/active-line.min.js"></script>
+<style>
+:root{
+  --paper:#F4F6FA; --surface:#FFFFFF; --ink:#15213A; --muted:#5A6781; --line:#D6DDE8;
+  --omr:#2B50D6; --omr-soft:#E7ECFD; --flag:#E2A812; --flag-soft:#FCF3D8;
+  --ok:#1B8A5A; --ok-soft:#E3F4EC; --bad:#C2362B; --bad-soft:#FBE7E5; --warn:#B26A00; --warn-soft:#FDF0DC;
+  --code-bg:#FAFBFD;
+  --syn-kw:#7A3EDB; --syn-str:#1D7A4C; --syn-num:#B4530D; --syn-com:#7C879C; --syn-def:#1F5FD1; --syn-type:#A1336B;
+  --sans:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0F1520; --surface:#161E2C; --ink:#E5EAF3; --muted:#94A1B7; --line:#2A3447;
+    --omr:#7C97FF; --omr-soft:#1E2A4D; --flag:#F0C14B; --flag-soft:#3A3115;
+    --ok:#4CC38A; --ok-soft:#16301F; --bad:#F07167; --bad-soft:#3A1C1A; --warn:#F0B35B; --warn-soft:#3A2A12;
+    --code-bg:#0C111A;
+    --syn-kw:#C49BFF; --syn-str:#7FD4A0; --syn-num:#F5A765; --syn-com:#6B7890; --syn-def:#82AAFF; --syn-type:#F28DB8;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--omr);outline-offset:2px}
+.hidden{display:none !important}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+code{font-family:var(--mono);font-size:.88em;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+
+/* buttons */
+.btn{appearance:none;border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--omr);border-color:var(--omr);color:#fff}
+.btn.go{background:var(--ok);border-color:var(--ok);color:#fff}
+@media (prefers-color-scheme: dark){ .btn.primary,.btn.go{color:#0F1520} }
+.btn.primary:hover,.btn.go:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:6px 12px;font-size:14.5px;border-radius:7px}
+.btn svg{width:15px;height:15px;flex:0 0 auto}
+
+/* ── start screen ── */
+.start{padding:64px 0 56px}
+.start h1{font-size:clamp(34px,5vw,52px);line-height:1.08;margin:0 0 14px;letter-spacing:-.01em;max-width:16ch}
+.start p.lead{color:var(--muted);max-width:60ch;margin:0 0 36px}
+.paper-plan{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1.5px solid var(--ink);border-radius:4px;max-width:760px;background:var(--surface)}
+.paper-plan section{padding:20px 22px}
+.paper-plan section+section{border-left:1.5px solid var(--ink)}
+.paper-plan h2{font-size:20px;margin:0 0 4px}
+.paper-plan .sub{color:var(--muted);font-size:15px;margin:0 0 12px}
+.paper-plan ul{margin:0;padding-left:18px}
+.paper-plan li{margin:3px 0}
+.rules{max-width:760px;margin:28px 0 28px;color:var(--muted);font-size:15.5px}
+.rules li{margin:4px 0}
+.start h2.sec{font-size:20px;margin:0 0 12px}
+.name-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;max-width:760px;margin-top:32px}
+.field{display:flex;flex-direction:column;gap:6px;flex:1 1 260px}
+.field label{font-weight:700;font-size:15px}
+.field input{border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:11px 14px}
+.err{color:var(--bad);font-size:15px;margin-top:10px;min-height:1.4em}
+
+/* ── how-it-works figure ── */
+.howto{margin:0;max-width:1000px}
+.howto .steps{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch}
+.howto .step{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px}
+.howto .step h4{margin:0;font-size:16px;display:flex;align-items:center;gap:8px}
+.howto .num{width:24px;height:24px;border-radius:50%;background:var(--omr);color:#fff;display:grid;place-items:center;font-size:13px;flex:0 0 auto}
+@media (prefers-color-scheme: dark){ .howto .num{color:#0F1520} }
+.howto .arrow{align-self:center;color:var(--muted);font-size:22px}
+.howto p{margin:0;font-size:14px;color:var(--muted);line-height:1.45}
+.mock{border:1px solid var(--line);border-radius:8px;background:var(--code-bg);font:12.5px/1.55 var(--mono);padding:9px 10px;overflow:hidden}
+.mock .ln{display:block;white-space:pre}
+.mock .k{color:var(--syn-kw)} .mock .f{color:var(--syn-def)} .mock .c{color:var(--syn-com)}
+.mock .mine{background:var(--ok-soft);border-radius:3px}
+.mock .bar{display:flex;gap:6px;margin-bottom:8px;font-family:var(--sans);font-size:12px;font-weight:700}
+.mock .pill{border-radius:6px;padding:2px 8px;border:1px solid var(--line);background:var(--surface)}
+.mock .pill.run{background:var(--ok);border-color:var(--ok);color:#fff}
+.mock .pill.sub{background:var(--omr);border-color:var(--omr);color:#fff}
+@media (prefers-color-scheme: dark){ .mock .pill.run,.mock .pill.sub{color:#0F1520} }
+.mock table{border-collapse:collapse;width:100%;font-size:12px}
+.mock td,.mock th{border:1px solid var(--line);padding:3px 6px;text-align:left;font-weight:400}
+.mock th{color:var(--muted);font-family:var(--sans);font-size:11.5px}
+.mock .yes{color:var(--ok);font-weight:700}
+.mock .no{color:var(--bad);font-weight:700}
+.mock .verdict{font-family:var(--sans);font-weight:700;color:var(--ok);font-size:13px;margin-bottom:6px}
+.mock .chips{display:flex;flex-wrap:wrap;gap:4px}
+.mock .chip{font-family:var(--sans);font-size:11px;font-weight:700;border-radius:5px;padding:1px 6px;background:var(--ok-soft);color:var(--ok)}
+.mock .chip.x{background:var(--bad-soft);color:var(--bad)}
+.howto figcaption{margin-top:10px;font-size:14px;color:var(--muted)}
+@media (max-width: 860px){
+  .howto .steps{grid-template-columns:1fr}
+  .howto .arrow{transform:rotate(90deg);justify-self:center}
+}
+
+/* ── top bar ── */
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1.5px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:64px;max-width:none}
+.topbar .who{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .who small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:4px;margin-left:auto;background:var(--paper);padding:4px;border-radius:10px}
+.tab{border:0;background:transparent;padding:7px 14px;border-radius:7px;cursor:pointer;font-weight:700;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1.5px var(--line)}
+.timer{font-family:var(--mono);font-weight:600;font-size:20px;font-variant-numeric:tabular-nums;min-width:96px;text-align:right}
+.timer.low{color:var(--bad)}
+
+/* ── set 1 ── */
+.set1{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;padding:28px 0 60px}
+.qpane{background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:28px 30px}
+.qmeta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:15px;margin-bottom:10px}
+.qtext{font-size:20px;line-height:1.5;margin:0 0 18px;max-width:62ch}
+pre.code{font-family:var(--mono);font-size:14px;line-height:1.6;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0 0 20px}
+.opts{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;border:0}
+.opt{display:flex;align-items:center;gap:14px;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;background:var(--surface)}
+.opt:hover{border-color:var(--muted)}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.bubble{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font-weight:700;font-size:14px;transition:background .12s,color .12s}
+.opt.sel{border-color:var(--omr);background:var(--omr-soft)}
+.opt.sel .bubble{background:var(--omr);border-color:var(--omr);color:var(--surface)}
+.opt:has(input:focus-visible){outline:3px solid var(--omr);outline-offset:2px}
+.qnav{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;align-items:center}
+.qnav .spacer{flex:1}
+.flagbtn[aria-pressed="true"]{background:var(--flag-soft);border-color:var(--flag)}
+.sheet{background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:18px 18px 14px;align-self:start;position:sticky;top:84px}
+.sheet h3{margin:0 0 2px;font-size:17px}
+.sheet .count{color:var(--muted);font-size:14px;margin:0 0 12px}
+.sheet .grp{margin:12px 0 0}
+.sheet .grp-name{font-size:13.5px;color:var(--muted);margin-bottom:6px}
+.dots{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dot{aspect-ratio:1;border-radius:50%;border:1.8px solid var(--muted);background:transparent;font-size:12.5px;font-weight:700;cursor:pointer;display:grid;place-items:center;padding:0;color:var(--muted)}
+.dot.ans{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.dot.flag{box-shadow:0 0 0 3px var(--flag)}
+.dot.cur{border-color:var(--omr);border-width:2.5px;color:var(--omr)}
+.dot.ans.cur{background:var(--omr);color:var(--surface)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:50%;display:inline-block;border:1.6px solid var(--muted)}
+.legend i.a{background:var(--ink);border-color:var(--ink)}
+.legend i.f{box-shadow:0 0 0 2.5px var(--flag)}
+
+/* ── set 2 workspace ── */
+.set2{display:flex;flex-direction:column;height:calc(100vh - 66px);min-height:600px}
+.qstrip{display:flex;gap:6px;align-items:center;padding:8px 14px;border-bottom:1.5px solid var(--line);background:var(--surface);overflow-x:auto;flex:0 0 auto}
+.qchip{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 14px 4px 4px;font-weight:700;font-size:14.5px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.qchip .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1.5px solid var(--line);font-size:12.5px}
+.qchip .st{font-weight:400;font-size:12.5px}
+.qchip[aria-selected="true"]{border-color:var(--omr);color:var(--ink);background:var(--omr-soft)}
+.qchip.solved .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.qchip.partial .n{background:var(--flag);border-color:var(--flag);color:#111}
+.qchip.touched .n{border-color:var(--ink);color:var(--ink)}
+@media (prefers-color-scheme: dark){ .qchip.solved .n{color:#0F1520} }
+.qstrip .spacer{flex:1 0 12px}
+.ws{flex:1;display:grid;grid-template-columns:minmax(320px,42%) minmax(0,1fr);min-height:0}
+.prob{overflow:auto;padding:22px 26px 48px;border-right:1.5px solid var(--line);background:var(--surface)}
+.prob h2{margin:0 0 8px;font-size:24px;line-height:1.2}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tag{font-size:13px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
+.prose p{margin:0 0 12px;max-width:68ch}
+.prose ul{margin:0 0 12px;padding-left:20px}
+.prose li{margin:3px 0}
+.prob h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px}
+.ex{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 10px;font:13.5px/1.6 var(--mono);overflow-x:auto}
+.ex b{font-family:var(--sans);font-size:13px;color:var(--muted);font-weight:700;display:inline-block;min-width:62px}
+table.dt{border-collapse:collapse;font:13.5px/1.4 var(--mono);margin:0 0 12px;background:var(--surface)}
+table.dt th,table.dt td{border:1px solid var(--line);padding:5px 10px;text-align:left;white-space:nowrap}
+table.dt th{font-family:var(--sans);font-size:12.5px;color:var(--muted);background:var(--paper)}
+table.dt caption{text-align:left;font:700 14px var(--sans);padding:0 0 4px;color:var(--ink)}
+table.dt td.null{color:var(--muted);font-style:italic}
+.dt-wrap{overflow-x:auto}
+.schema{font:13px/1.5 var(--mono);color:var(--muted);margin:-6px 0 14px}
+
+.ide{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--paper)}
+.ide-bar{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1.5px solid var(--line);background:var(--surface);flex-wrap:wrap}
+.ide-bar select{border:1.5px solid var(--line);background:var(--paper);border-radius:7px;padding:6px 10px;font-weight:700;font-size:14.5px}
+.ide-bar .spacer{flex:1}
+.ide-bar .hint{font-size:12.5px;color:var(--muted)}
+.editor{flex:1;min-height:220px;position:relative}
+.editor .CodeMirror{position:absolute;inset:0;height:auto}
+.out{height:42%;min-height:170px;border-top:1.5px solid var(--line);background:var(--surface);display:flex;flex-direction:column}
+.out-head{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px}
+.out-head .status{font-weight:400;color:var(--muted);font-size:14px;display:flex;align-items:center;gap:8px}
+.out-body{flex:1;overflow:auto;padding:12px 14px 18px}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--omr);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.verdict{font-size:19px;font-weight:700;margin:0 0 2px}
+.verdict.pass{color:var(--ok)} .verdict.fail{color:var(--bad)} .verdict.warn{color:var(--warn)}
+.vsub{color:var(--muted);font-size:14px;margin:0 0 12px}
+.cases{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.case{border:1.5px solid var(--line);background:var(--surface);border-radius:7px;padding:4px 10px;font-weight:700;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.case i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.case.pass i{background:var(--ok)} .case.fail i,.case.error i{background:var(--bad)} .case.tle i{background:var(--warn)}
+.case[aria-pressed="true"]{border-color:var(--ink);background:var(--paper)}
+.kv{display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px 12px;align-items:start;font-size:14px}
+.kv > b{color:var(--muted);font-size:13px;padding-top:6px}
+.kv pre{margin:0;font:13.5px/1.55 var(--mono);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 10px;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow:auto}
+.kv pre.bad{border-color:var(--bad);background:var(--bad-soft)}
+.kv pre.good{border-color:var(--ok);background:var(--ok-soft)}
+pre.compile{margin:0;font:13px/1.55 var(--mono);background:var(--bad-soft);color:var(--bad);border-radius:8px;padding:10px 12px;white-space:pre-wrap;word-break:break-word}
+.note{color:var(--muted);font-size:14px;margin:0 0 10px}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.intro{color:var(--muted);font-size:15px;display:flex;gap:10px;align-items:flex-start;margin:0 0 14px}
+.intro svg{flex:0 0 auto;width:28px;height:28px;color:var(--ok)}
+.essay{flex:1;display:flex;flex-direction:column;padding:14px;gap:6px;min-height:0}
+.essay textarea{flex:1;width:100%;min-height:240px;resize:none;border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--surface);font-family:var(--mono);font-size:14px;line-height:1.6;tab-size:4}
+.essay .saved{font-size:13px;color:var(--muted)}
+
+/* CodeMirror theme */
+.CodeMirror{font-family:var(--mono);font-size:14px;line-height:1.6;background:var(--code-bg);color:var(--ink);font-variant-ligatures:none}
+.CodeMirror,.kv pre,.ex,pre.compile,.mock,code,table.dt{font-variant-ligatures:none;font-feature-settings:"calt" 0,"liga" 0}
+.CodeMirror-gutters{background:var(--code-bg);border-right:1px solid var(--line)}
+.CodeMirror-linenumber{color:var(--muted);padding:0 10px 0 6px}
+.CodeMirror-cursor{border-left:2px solid var(--ink)}
+.CodeMirror-selected,.CodeMirror-focused .CodeMirror-selected{background:var(--omr-soft)}
+.CodeMirror-line::selection,.CodeMirror-line>span::selection,.CodeMirror-line>span>span::selection{background:var(--omr-soft)}
+.CodeMirror-activeline-background{background:rgba(120,135,170,.09)}
+.CodeMirror-matchingbracket{color:var(--ok) !important;font-weight:700;text-decoration:underline}
+.cm-s-default .cm-keyword{color:var(--syn-kw)}
+.cm-s-default .cm-string,.cm-s-default .cm-string-2{color:var(--syn-str)}
+.cm-s-default .cm-number,.cm-s-default .cm-atom{color:var(--syn-num)}
+.cm-s-default .cm-comment,.cm-s-default .cm-meta{color:var(--syn-com)}
+.cm-s-default .cm-def,.cm-s-default .cm-property{color:var(--syn-def)}
+.cm-s-default .cm-variable-2,.cm-s-default .cm-variable-3,.cm-s-default .cm-type,.cm-s-default .cm-builtin{color:var(--syn-type)}
+.cm-s-default .cm-variable,.cm-s-default .cm-operator,.cm-s-default .cm-punctuation{color:var(--ink)}
+
+/* ── modal + done ── */
+.scrim{position:fixed;inset:0;background:rgba(10,15,25,.55);display:grid;place-items:center;padding:20px;z-index:50;overflow:auto}
+.modal{background:var(--surface);border-radius:12px;padding:26px 28px;max-width:460px;width:100%}
+.modal.wide{max-width:1060px;background:var(--paper)}
+.modal h2{margin:0 0 10px;font-size:22px}
+.modal table.sum{width:100%;border-collapse:collapse;margin:8px 0 18px;font-size:16px}
+.modal table.sum td{padding:6px 0;border-bottom:1px solid var(--line)}
+.modal table.sum td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.modal .actions{display:flex;gap:10px;justify-content:flex-end}
+.done{padding:96px 0;max-width:620px}
+.done h1{font-size:40px;margin:0 0 12px}
+.done p{color:var(--muted)}
+.done .score{font-size:22px;color:var(--ink);font-weight:700}
+
+@media (max-width: 900px){
+  .set1{grid-template-columns:1fr}
+  .sheet{position:static}
+  .qpane{padding:22px 18px}
+  .paper-plan{grid-template-columns:1fr}
+  .paper-plan section+section{border-left:0;border-top:1.5px solid var(--ink)}
+  .topbar .wrap{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px}
+  .tabs{margin-left:0;order:3}
+  .set2{height:auto;min-height:0}
+  .ws{grid-template-columns:1fr}
+  .prob{border-right:0;border-bottom:1.5px solid var(--line);max-height:none}
+  .editor{height:380px;flex:none}
+  .out{height:auto;min-height:220px}
+  .ide-bar .hint{display:none}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
+</style>
+</head>
+<body>
+
+<!-- START -->
+<main id="start" class="wrap start hidden">
+  <h1 id="testTitle">Assessment</h1>
+  <p class="lead">Two sets, one timer. You can move between sets and change answers any time before you submit.</p>
+
+  <div class="paper-plan">
+    <section>
+      <h2>Set 1</h2>
+      <p class="sub" id="s1sub">Multiple choice</p>
+      <ul id="s1topics"></ul>
+    </section>
+    <section>
+      <h2>Set 2</h2>
+      <p class="sub" id="s2sub">Coding and written answers</p>
+      <ul id="s2topics"></ul>
+    </section>
+  </div>
+
+  <ul class="rules">
+    <li id="ruleTime">The timer starts when you begin and the test submits itself when time runs out.</li>
+    <li>Your answers and code are saved in this browser as you go, so a refresh won't lose them.</li>
+    <li>Switching tabs or windows is recorded.</li>
+    <li>Set 2 has a built-in code editor. Code runs right here in your browser; the first run of each language takes a little longer while it loads.</li>
+  </ul>
+
+  <h2 class="sec">How Set 2 coding works</h2>
+  <div id="howtoStart"></div>
+
+  <div class="name-row">
+    <div class="field">
+      <label for="nameInput">Your name</label>
+      <input id="nameInput" autocomplete="name" placeholder="Full name">
+    </div>
+    <button class="btn primary" id="beginBtn">Begin test</button>
+  </div>
+  <div class="err" id="startErr"></div>
+</main>
+
+<!-- TEST -->
+<div id="test" class="hidden">
+  <header class="topbar">
+    <div class="wrap">
+      <div class="who"><span id="whoName"></span><small id="whoProgress"></small></div>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tab1" aria-selected="true">Set 1</button>
+        <button class="tab" role="tab" id="tab2" aria-selected="false">Set 2</button>
+      </div>
+      <div class="timer" id="timer" aria-live="off">--:--</div>
+      <button class="btn primary" id="submitBtn">Finish test</button>
+    </div>
+  </header>
+
+  <main class="wrap" id="set1wrap">
+    <div id="set1" class="set1">
+      <article class="qpane" aria-live="polite">
+        <div class="qmeta"><span id="qTopic"></span><span id="qNum"></span></div>
+        <p class="qtext" id="qText"></p>
+        <pre class="code hidden" id="qCode"></pre>
+        <fieldset class="opts" id="qOpts"></fieldset>
+        <div class="qnav">
+          <button class="btn" id="prevBtn">Previous</button>
+          <button class="btn flagbtn" id="flagBtn" aria-pressed="false">Mark for review</button>
+          <button class="btn" id="clearBtn">Clear answer</button>
+          <span class="spacer"></span>
+          <button class="btn primary" id="nextBtn">Next</button>
+        </div>
+      </article>
+
+      <aside class="sheet" aria-label="Answer sheet">
+        <h3>Answer sheet</h3>
+        <p class="count" id="sheetCount"></p>
+        <div id="sheetGroups"></div>
+        <div class="legend">
+          <span><i class="a"></i>Answered</span>
+          <span><i></i>Not answered</span>
+          <span><i class="f"></i>For review</span>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div id="set2" class="set2 hidden">
+    <nav class="qstrip" id="qstrip" aria-label="Set 2 questions"></nav>
+    <div class="ws">
+      <section class="prob" id="prob" aria-live="polite"></section>
+      <section class="ide" id="ide">
+        <div class="ide-bar" id="ideBar">
+          <select id="langSel" aria-label="Language"></select>
+          <button class="btn sm" id="resetBtn" title="Go back to the starter code">Reset</button>
+          <span class="spacer"></span>
+          <span class="hint">Ctrl/⌘ + Enter to run</span>
+          <button class="btn sm go" id="runBtn" title="Run the sample tests (Ctrl/⌘ + Enter)">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 2.5v11l9-5.5z"/></svg>Run</button>
+          <button class="btn sm primary" id="subBtn" title="Run every test, including hidden ones (Ctrl/⌘ + Shift + Enter)">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M3 8.5l3.2 3.2L13 4.8"/></svg>Submit</button>
+        </div>
+        <div class="editor" id="editorBox"></div>
+        <div class="out" id="out">
+          <div class="out-head">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 6l2 2-2 2M8 10.5h3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Output <span class="status" id="outStatus" role="status"></span>
+          </div>
+          <div class="out-body" id="outBody"></div>
+        </div>
+        <div class="essay hidden" id="essay">
+          <textarea id="essayText" spellcheck="false" placeholder="Show your working and final answer"></textarea>
+          <div class="saved" id="essaySaved"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- DONE -->
+<main id="done" class="wrap done hidden">
+  <h1>Submitted</h1>
+  <p>Your answers have been recorded. You can close this tab.</p>
+  <p class="score hidden" id="doneScore"></p>
+</main>
+
+<!-- HOW IT WORKS -->
+<div class="scrim hidden" id="howtoModal" role="dialog" aria-modal="true" aria-labelledby="howtoTitle">
+  <div class="modal wide">
+    <h2 id="howtoTitle">How Set 2 coding works</h2>
+    <div id="howtoModalBody"></div>
+    <div class="actions" style="margin-top:16px"><button class="btn primary" id="howtoClose">Got it</button></div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="scrim hidden" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal">
+    <h2 id="confirmTitle">Finish and submit the test?</h2>
+    <p style="margin:0;color:var(--muted)">You won't be able to change answers after this.</p>
+    <table class="sum">
+      <tr><td>Set 1 answered</td><td id="cAns"></td></tr>
+      <tr><td>Set 1 marked for review</td><td id="cFlag"></td></tr>
+      <tr><td>Set 2 questions attempted</td><td id="cS2"></td></tr>
+      <tr><td>Coding questions submitted</td><td id="cSub"></td></tr>
+      <tr><td>Time left</td><td id="cTime"></td></tr>
+    </table>
+    <div class="err" id="submitErr"></div>
+    <div class="actions">
+      <button class="btn" id="cancelBtn">Keep working</button>
+      <button class="btn primary" id="confirmBtn">Submit test</button>
+    </div>
+  </div>
+</div>
+
+<template id="howtoTpl">
+  <figure class="howto">
+    <div class="steps">
+      <div class="step">
+        <h4><span class="num">1</span>Write the method</h4>
+        <div class="mock" aria-hidden="true">
+          <div class="bar"><span class="pill">Python 3 ▾</span></div>
+          <span class="ln"><span class="k">class</span> Solution:</span>
+          <span class="ln">  <span class="k">def</span> <span class="f">missingNumber</span>(self, nums):</span>
+          <span class="ln mine">    n = len(nums)</span>
+          <span class="ln mine">    <span class="k">return</span> n*(n+1)//2 - sum(nums)</span>
+        </div>
+        <p>Pick Python, Java or C++ and fill in the method. The input reading and <code>main()</code> are already handled, so don't write them.</p>
+      </div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step">
+        <h4><span class="num">2</span>Run checks the examples</h4>
+        <div class="mock" aria-hidden="true">
+          <div class="bar"><span class="pill run">▶ Run</span></div>
+          <table>
+            <tr><th>Input</th><th>Expected</th><th>Yours</th></tr>
+            <tr><td>[3,0,1]</td><td>2</td><td class="yes">2 ✓</td></tr>
+            <tr><td>[0,1]</td><td>2</td><td class="no">1 ✗</td></tr>
+          </table>
+        </div>
+        <p>Your output appears next to the expected output. Anything you <code>print</code> shows up too, which helps with debugging.</p>
+      </div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step">
+        <h4><span class="num">3</span>Submit runs every test</h4>
+        <div class="mock" aria-hidden="true">
+          <div class="bar"><span class="pill sub">✓ Submit</span></div>
+          <div class="verdict">Accepted · 10 / 10 tests</div>
+          <div class="chips"><span class="chip">1</span><span class="chip">2</span><span class="chip">3</span><span class="chip">H1</span><span class="chip">H2</span><span class="chip">H3</span><span class="chip">H4</span><span class="chip">…</span></div>
+        </div>
+        <p>Hidden tests add edge cases and big inputs, with a time limit. Submit as often as you like; your last Submit is recorded.</p>
+      </div>
+    </div>
+    <figcaption>SQL questions work the same way: write one query (MySQL or Spark SQL style) that returns the asked columns, then Run or Submit.</figcaption>
+  </figure>
+</template>
+
+<script>
+(() => {
+  const KEY = "assessment_state_v1";
+  const DONE = "assessment_done_v1";
+  const $ = (id) => document.getElementById(id);
+  const LETTERS = ["A","B","C","D","E","F"];
+  const LANG = { python: "Python 3", java: "Java 8", cpp: "C++17" };
+  const MODE = { python: "python", java: "text/x-java", cpp: "text/x-c++src", sql: "text/x-mysql" };
+  const DIALECT = { mysql: "MySQL", spark: "Spark SQL" };
+
+  let paper = null;
+  let S = null;            // saved state
+  let timerId = null;
+  let submitting = false;
+
+  let saveT = null;
+  const saveNow = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(saveNow, 250); };
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
+  window.addEventListener("pagehide", () => { if (S) saveNow(); });
+
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+
+  function show(id){
+    ["start","test","done"].forEach(x => $(x).classList.toggle("hidden", x !== id));
+  }
+
+  // the "how it works" figure is used on the start screen and in Set 2
+  const howto = () => $("howtoTpl").content.cloneNode(true);
+  $("howtoStart").appendChild(howto());
+  $("howtoModalBody").appendChild(howto());
+  const openHowto = () => { $("howtoModal").classList.remove("hidden"); $("howtoClose").focus(); };
+  $("howtoClose").onclick = () => { $("howtoModal").classList.add("hidden"); if (S) { S.seenHowto = true; save(); } };
+  $("howtoModal").addEventListener("keydown", e => { if (e.key === "Escape") $("howtoClose").click(); });
+
+  // ── boot ──
+  (async function init(){
+    try {
+      if (localStorage.getItem(DONE)) { show("done"); return; }
+    } catch {}
+    try {
+      const r = await fetch("/api/questions", { cache: "no-store" });
+      if (!r.ok) throw new Error();
+      paper = await r.json();
+    } catch {
+      show("start");
+      $("beginBtn").disabled = true;
+      $("startErr").textContent = "Couldn't load the questions. Check your connection and reload the page.";
+      return;
+    }
+    fillStart();
+    S = load();
+    if (S && S.startedAt) startTest(); else show("start");
+  })();
+
+  function fillStart(){
+    const c = paper.config;
+    document.title = c.title;
+    $("testTitle").textContent = c.title;
+    const topics = {};
+    paper.set1.forEach(q => topics[q.topic] = (topics[q.topic] || 0) + 1);
+    $("s1topics").innerHTML = "";
+    Object.entries(topics).forEach(([t,n]) => {
+      const li = document.createElement("li"); li.textContent = `${t}: ${n} questions`; $("s1topics").appendChild(li);
+    });
+    const neg = c.set1NegativeMark ? `, −${c.set1NegativeMark} for a wrong answer` : ", no negative marking";
+    $("s1sub").textContent = `${paper.set1.length} questions, ${c.set1MarkPerQuestion} mark each${neg}`;
+    const types = {}; let s2marks = 0;
+    paper.set2.forEach(q => { types[q.type] = (types[q.type] || 0) + 1; s2marks += q.marks; });
+    $("s2topics").innerHTML = "";
+    Object.entries(types).forEach(([t,n]) => {
+      const li = document.createElement("li");
+      li.textContent = `${t}: ${n} question${n>1?"s":""}` + (t === "DSA" ? " (Python, Java or C++)" : t === "SQL" ? " (MySQL or Spark SQL)" : "");
+      $("s2topics").appendChild(li);
+    });
+    $("s2sub").textContent = `${paper.set2.length} questions, ${s2marks} marks. Code is tested automatically, then checked by hand.`;
+    $("ruleTime").textContent = `You have ${c.durationMinutes} minutes in total. The timer starts when you begin, and the test submits itself when time runs out.`;
+  }
+
+  $("beginBtn").addEventListener("click", () => {
+    const name = $("nameInput").value.trim();
+    if (!name) { $("startErr").textContent = "Enter your name to begin."; $("nameInput").focus(); return; }
+    S = { name, startedAt: Date.now(), answers: {}, flags: {}, set2: {}, code: {}, q2: 0, cur: 0, tab: 1, tabSwitches: 0 };
+    saveNow();
+    startTest();
+  });
+  $("nameInput").addEventListener("keydown", e => { if (e.key === "Enter") $("beginBtn").click(); });
+
+  // ── test ──
+  function startTest(){
+    S.code ||= {}; S.set2 ||= {}; S.q2 ||= 0;
+    show("test");
+    $("whoName").textContent = S.name;
+    buildSheet();
+    renderQ();
+    buildSet2();
+    switchTab(S.tab || 1);
+    tick(); timerId = setInterval(tick, 1000);
+  }
+
+  function remainingMs(){
+    return paper.config.durationMinutes * 60000 - (Date.now() - S.startedAt);
+  }
+  function fmt(ms){
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    const mm = String(m).padStart(2,"0"), ss = String(x).padStart(2,"0");
+    return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  }
+  function tick(){
+    const ms = remainingMs();
+    $("timer").textContent = fmt(ms);
+    $("timer").classList.toggle("low", ms < 5 * 60000);
+    if (ms <= 0 && !submitting) { clearInterval(timerId); doSubmit(true); }
+  }
+
+  function switchTab(n){
+    S.tab = n; save();
+    $("tab1").setAttribute("aria-selected", n === 1);
+    $("tab2").setAttribute("aria-selected", n === 2);
+    $("set1wrap").classList.toggle("hidden", n !== 1);
+    $("set2").classList.toggle("hidden", n !== 2);
+    if (n === 2) {
+      openQ2(S.q2 || 0);
+      if (!S.seenHowto) openHowto();
+    }
+  }
+  $("tab1").onclick = () => switchTab(1);
+  $("tab2").onclick = () => switchTab(2);
+
+  function answeredCount(){ return paper.set1.filter(q => Number.isInteger(S.answers[q.id])).length; }
+  function updateProgress(){
+    const a = answeredCount();
+    $("whoProgress").textContent = `Set 1: ${a} of ${paper.set1.length} answered`;
+    $("sheetCount").textContent = `${a} of ${paper.set1.length} answered`;
+  }
+
+  function buildSheet(){
+    const box = $("sheetGroups"); box.innerHTML = "";
+    let lastTopic = null, grid = null;
+    paper.set1.forEach((q, i) => {
+      if (q.topic !== lastTopic){
+        const g = el("div","grp");
+        const n = el("div","grp-name",q.topic);
+        grid = el("div","dots");
+        g.append(n, grid); box.appendChild(g); lastTopic = q.topic;
+      }
+      const d = el("button","dot",String(i + 1)); d.id = "dot" + i;
+      d.setAttribute("aria-label", `Question ${i+1}`);
+      d.onclick = () => { S.cur = i; save(); renderQ(); };
+      grid.appendChild(d);
+    });
+    paintSheet();
+  }
+  function paintSheet(){
+    paper.set1.forEach((q, i) => {
+      const d = $("dot" + i);
+      d.classList.toggle("ans", Number.isInteger(S.answers[q.id]));
+      d.classList.toggle("flag", !!S.flags[q.id]);
+      d.classList.toggle("cur", i === S.cur);
+      d.setAttribute("aria-current", i === S.cur ? "true" : "false");
+    });
+    updateProgress();
+  }
+
+  function renderQ(){
+    const i = S.cur, q = paper.set1[i];
+    $("qTopic").textContent = q.topic;
+    $("qNum").textContent = `Question ${i+1} of ${paper.set1.length}`;
+    $("qText").textContent = q.q;
+    $("qCode").classList.toggle("hidden", !q.code);
+    $("qCode").textContent = q.code || "";
+    const box = $("qOpts"); box.innerHTML = "";
+    const leg = el("legend","hidden","Options"); box.appendChild(leg);
+    q.options.forEach((opt, k) => {
+      const lab = el("label","opt" + (S.answers[q.id] === k ? " sel" : ""));
+      const inp = document.createElement("input");
+      inp.type = "radio"; inp.name = "opt"; inp.value = k; inp.checked = S.answers[q.id] === k;
+      inp.onchange = () => { S.answers[q.id] = k; save(); renderQ(); };
+      lab.append(inp, el("span","bubble",LETTERS[k]), el("span",null,opt)); box.appendChild(lab);
+    });
+    $("prevBtn").disabled = i === 0;
+    $("nextBtn").textContent = i === paper.set1.length - 1 ? "Go to Set 2" : "Next";
+    $("flagBtn").setAttribute("aria-pressed", !!S.flags[q.id]);
+    paintSheet();
+  }
+  $("prevBtn").onclick = () => { if (S.cur > 0){ S.cur--; save(); renderQ(); } };
+  $("nextBtn").onclick = () => {
+    if (S.cur < paper.set1.length - 1){ S.cur++; save(); renderQ(); }
+    else { switchTab(2); window.scrollTo(0,0); }
+  };
+  $("flagBtn").onclick = () => { const id = paper.set1[S.cur].id; S.flags[id] = !S.flags[id]; save(); renderQ(); };
+  $("clearBtn").onclick = () => { delete S.answers[paper.set1[S.cur].id]; save(); renderQ(); };
+
+  document.addEventListener("keydown", (e) => {
+    if ($("test").classList.contains("hidden") || S.tab !== 1) return;
+    if (["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName) && document.activeElement.type !== "radio") return;
+    if (!$("confirm").classList.contains("hidden")) return;
+    if (e.key === "ArrowRight") $("nextBtn").click();
+    if (e.key === "ArrowLeft") $("prevBtn").click();
+    const k = "abcdef".indexOf(e.key.toLowerCase());
+    const q = paper.set1[S.cur];
+    if (k >= 0 && k < q.options.length && !e.metaKey && !e.ctrlKey){ S.answers[q.id] = k; save(); renderQ(); }
+  });
+
+  // ─────────────────────────── SET 2 ───────────────────────────
+  let R = null;                                   // runner module, loaded on first use
+  const runner = () => R ? Promise.resolve(R) : import("/runner/runner.js").then(m => (R = m));
+  let cm = null;                                  // CodeMirror instance
+  const docs = {};                                // `${qid}:${lang}` → CodeMirror.Doc
+  const results = {};                             // qid → { mode, res, tests }
+  const selCase = {};                             // qid → selected case index
+  let running = null;                             // qid currently running
+
+  const curQ = () => paper.set2[S.q2 || 0];
+  const isSQL = (q) => q.coding && q.coding.kind === "sql";
+  const hash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h >>> 0); };
+  const starterOf = (q, lang) => isSQL(q) ? q.coding.starter : q.coding.starter[lang];
+
+  function codeState(q){
+    let c = S.code[q.id];
+    if (!c) c = S.code[q.id] = isSQL(q) ? { lang: "mysql", src: {} } : { lang: S.lastLang || "python", src: {} };
+    const key = isSQL(q) ? "sql" : c.lang;
+    if (c.src[key] == null) c.src[key] = starterOf(q, c.lang);
+    return c;
+  }
+  const srcKey = (q, c) => isSQL(q) ? "sql" : c.lang;
+  const currentCode = (q) => { const c = codeState(q); return c.src[srcKey(q, c)] || ""; };
+  const touched = (q) => {
+    if (!q.coding) return !!(S.set2[q.id] || "").trim();
+    const c = S.code[q.id]; if (!c) return false;
+    return currentCode(q).trim() !== starterOf(q, c.lang).trim();
+  };
+
+  // tiny formatter for the problem text: paragraphs, "- " bullets and `code`
+  function prose(text){
+    const box = el("div","prose");
+    const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+    text.split(/\n\s*\n/).forEach((block) => {
+      const lines = block.split("\n");
+      const head = lines.filter(l => !/^\s*- /.test(l));
+      const items = lines.filter(l => /^\s*- /.test(l));
+      if (head.length) { const p = el("p"); p.innerHTML = head.map(inline).join("<br>"); box.appendChild(p); }
+      if (items.length) {
+        const ul = el("ul");
+        items.forEach(l => { const li = el("li"); li.innerHTML = inline(l.replace(/^\s*- /, "")); ul.appendChild(li); });
+        box.appendChild(ul);
+      }
+    });
+    return box;
+  }
+
+  function dataTable(columns, rows, caption){
+    const wrap = el("div","dt-wrap");
+    const t = el("table","dt");
+    if (caption) t.appendChild(el("caption",null,caption));
+    const tr = el("tr"); columns.forEach(c => tr.appendChild(el("th",null,c))); t.appendChild(tr);
+    rows.forEach(r => {
+      const row = el("tr");
+      r.forEach(v => { const td = el("td", v === null ? "null" : null, v === null ? "NULL" : String(v)); row.appendChild(td); });
+      t.appendChild(row);
+    });
+    if (!rows.length) { const row = el("tr"); const td = el("td","null","(no rows)"); td.colSpan = Math.max(1, columns.length); row.appendChild(td); t.appendChild(row); }
+    wrap.appendChild(t);
+    return wrap;
+  }
+
+  const clip = (s, n = 400) => (s.length > n ? s.slice(0, n) + `… (${(s.length - n).toLocaleString()} more characters)` : s);
+  const fmtVal = (q, v) => v === null || v === undefined ? "" : q.coding.output === "string" ? JSON.stringify(v) : v;
+
+  function buildSet2(){
+    paintStrip();
+    cm = CodeMirror($("editorBox"), {
+      value: "", lineNumbers: true, indentUnit: 4, tabSize: 4, indentWithTabs: false,
+      matchBrackets: true, autoCloseBrackets: true, styleActiveLine: true, viewportMargin: 30,
+      extraKeys: {
+        Tab: (c) => c.somethingSelected() ? c.indentSelection("add") : c.replaceSelection("    ", "end"),
+        "Shift-Tab": (c) => c.indentSelection("subtract"),
+        "Ctrl-Enter": () => run("run"), "Cmd-Enter": () => run("run"),
+        "Shift-Ctrl-Enter": () => run("submit"), "Shift-Cmd-Enter": () => run("submit"),
+        "Ctrl-/": "toggleComment", "Cmd-/": "toggleComment"
+      }
+    });
+    cm.on("change", () => {
+      const q = curQ(); if (!q.coding) return;
+      const c = codeState(q);
+      c.src[srcKey(q, c)] = cm.getValue();
+      save(); paintStrip();
+    });
+    $("langSel").onchange = () => {
+      const q = curQ(), c = codeState(q), v = $("langSel").value;
+      c.lang = v;
+      if (!isSQL(q)) { S.lastLang = v; warmQuiet(v); }
+      codeState(q); save();
+      attachDoc(q);
+    };
+    $("resetBtn").onclick = () => {
+      const q = curQ(); if (!q.coding) return;
+      if (!confirm("Go back to the starter code? Your code for this language will be replaced.")) return;
+      cm.setValue(starterOf(q, codeState(q).lang)); cm.focus();
+    };
+    $("runBtn").onclick = () => run("run");
+    $("subBtn").onclick = () => run("submit");
+    $("essayText").addEventListener("input", () => {
+      const q = curQ(); S.set2[q.id] = $("essayText").value; save(); $("essaySaved").textContent = "Saved"; paintStrip();
+    });
+  }
+
+  function paintStrip(){
+    const box = $("qstrip"); box.innerHTML = "";
+    paper.set2.forEach((q, i) => {
+      const b = el("button","qchip"); b.type = "button";
+      b.setAttribute("aria-selected", i === (S.q2 || 0));
+      const c = S.code[q.id];
+      let st = touched(q) ? "Attempted" : "Not started";
+      if (q.coding && c && c.submit) {
+        const stale = c.submit.hash !== hash(currentCode(q));
+        st = `${c.submit.passed}/${c.submit.total} passed${stale ? " · edited" : ""}`;
+        b.classList.add(c.submit.passed === c.submit.total ? "solved" : c.submit.passed > 0 ? "partial" : "touched");
+      } else if (touched(q)) b.classList.add("touched");
+      b.append(el("span","n",String(i + 1)), el("span",null,q.title), el("span","st",st));
+      b.onclick = () => openQ2(i);
+      box.appendChild(b);
+    });
+    box.appendChild(el("span","spacer"));
+    const help = el("button","btn sm","How it works"); help.type = "button"; help.onclick = openHowto;
+    box.appendChild(help);
+  }
+
+  function openQ2(i){
+    S.q2 = i; save();
+    paintStrip();
+    const q = curQ();
+    renderProblem(q);
+    const coding = !!q.coding;
+    $("ideBar").classList.toggle("hidden", !coding);
+    $("editorBox").classList.toggle("hidden", !coding);
+    $("out").classList.toggle("hidden", !coding);
+    $("essay").classList.toggle("hidden", coding);
+    if (!coding) {
+      $("essayText").value = S.set2[q.id] || "";
+      $("essaySaved").textContent = $("essayText").value ? "Saved" : "";
+      return;
+    }
+    const c = codeState(q);
+    const sel = $("langSel"); sel.innerHTML = "";
+    Object.entries(isSQL(q) ? DIALECT : LANG).forEach(([k, label]) => { const o = el("option", null, label); o.value = k; sel.appendChild(o); });
+    sel.value = c.lang;
+    attachDoc(q);
+    renderOut(q);
+    warmQuiet(isSQL(q) ? "sql" : c.lang);
+  }
+
+  function attachDoc(q){
+    const c = codeState(q), key = `${q.id}:${srcKey(q, c)}`;
+    if (!docs[key]) docs[key] = CodeMirror.Doc(c.src[srcKey(q, c)], isSQL(q) ? MODE.sql : MODE[c.lang]);
+    cm.swapDoc(docs[key]);
+    setTimeout(() => cm.refresh(), 0);
+  }
+
+  function renderProblem(q){
+    const box = $("prob"); box.innerHTML = ""; box.scrollTop = 0;
+    box.appendChild(el("h2", null, q.title));
+    const tags = el("div","tags");
+    tags.append(el("span","tag",q.type), el("span","tag",`${q.marks} marks`));
+    if (q.coding && !isSQL(q)) tags.appendChild(el("span","tag","Python · Java · C++"));
+    if (isSQL(q)) tags.appendChild(el("span","tag","MySQL · Spark SQL"));
+    box.appendChild(tags);
+    box.appendChild(prose(q.prompt));
+    if (q.link && !q.coding) {
+      const a = el("a",null,"Open the problem in a new tab"); a.href = q.link; a.target = "_blank"; a.rel = "noopener"; a.style.color = "var(--omr)";
+      box.appendChild(a);
+    }
+    if (!q.coding) return;
+    const samples = q.coding.tests.filter(t => t.sample);
+    if (isSQL(q)) {
+      box.appendChild(el("h3",null,"Tables (sample data)"));
+      q.coding.tables.forEach(t => {
+        box.appendChild(dataTable(t.columns.map(c => c.name), (samples[0].data[t.name] || []), t.name));
+        box.appendChild(el("div","schema", t.columns.map(c => `${c.name} ${c.type}`).join(", ")));
+      });
+      box.appendChild(el("h3",null,"Expected output (sample)"));
+      box.appendChild(dataTable(samples[0].expected.columns, samples[0].expected.rows));
+      box.appendChild(el("p","note", `Hidden tests use ${q.coding.tests.length - samples.length} more datasets with edge cases. Column names don't have to match, but column order and row order do.`));
+    } else {
+      box.appendChild(el("h3",null,"Examples"));
+      samples.forEach((t, k) => {
+        const ex = el("div","ex");
+        ex.innerHTML = `<b>Input</b> ${escapeHtml(t.show)}<br><b>Output</b> ${escapeHtml(String(fmtVal(q, t.expected)))}`;
+        box.appendChild(ex);
+      });
+      box.appendChild(el("p","note", `Submit also runs ${q.coding.tests.length - samples.length} hidden tests.`));
+    }
+  }
+  const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+  // ── warm-up and status ──
+  function setStatus(text, busy){
+    const s = $("outStatus"); s.innerHTML = "";
+    if (!text) return;
+    if (busy) s.appendChild(el("span","spin"));
+    s.appendChild(el("span",null,text));
+  }
+  const ready = {};
+  function warmQuiet(lang){
+    if (ready[lang] || running) return;
+    runner().then(R => {
+      if (!running) setStatus(lang === "sql" ? "Getting the SQL engine ready…" : `Getting ${LANG[lang]} ready…`, true);
+      return R.warm(lang, (t) => { if (!running) setStatus(t, true); });
+    }).then(() => {
+      ready[lang] = true;
+      if (!running) setStatus(lang === "sql" ? "SQL engine ready" : `${LANG[lang]} ready`);
+    }, () => { if (!running) setStatus("Couldn't load the runner. Check your connection; Run will try again."); });
+  }
+
+  // ── run / submit ──
+  async function run(mode){
+    const q = curQ();
+    if (!q.coding || running) return;
+    const c = codeState(q), code = currentCode(q);
+    const tests = mode === "run" ? q.coding.tests.filter(t => t.sample) : q.coding.tests;
+    running = q.id;
+    $("runBtn").disabled = $("subBtn").disabled = true;
+    setStatus(mode === "run" ? "Running the sample tests…" : "Running all tests…", true);
+    $("outBody").innerHTML = "";
+    try {
+      const Rm = await runner();
+      const onStatus = (t) => setStatus(t, true);
+      const res = isSQL(q)
+        ? await Rm.runSQL({ query: code, spec: q.coding, tests, onStatus })
+        : await Rm.runDSA({ lang: c.lang, code, spec: q.coding, tests, onStatus });
+      ready[isSQL(q) ? "sql" : c.lang] = true;
+      results[q.id] = { mode, res, tests, lang: c.lang };
+      const firstBad = res.results.findIndex(r => r.status !== "pass");
+      selCase[q.id] = firstBad >= 0 ? firstBad : 0;
+      if (mode === "submit") {
+        const passed = res.compileError ? 0 : res.results.filter(r => r.status === "pass").length;
+        c.submit = { passed, total: tests.length, at: Date.now(), hash: hash(code), lang: c.lang, compileError: !!res.compileError };
+        saveNow();
+      }
+      setStatus(`Finished in ${(res.ms / 1000).toFixed(1)} s`);
+    } catch (e) {
+      results[q.id] = { mode, error: e.message || String(e), tests };
+      setStatus("");
+    } finally {
+      running = null;
+      $("runBtn").disabled = $("subBtn").disabled = false;
+      paintStrip();
+      if (curQ().id === q.id) renderOut(q);
+    }
+  }
+
+  function renderOut(q){
+    const body = $("outBody"); body.innerHTML = "";
+    if (running === q.id) return;
+    const r = results[q.id];
+    if (!r) {
+      const intro = el("div","intro");
+      intro.innerHTML = `<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="13" fill="currentColor" opacity=".15"/><path d="M11 8.5v11l9-5.5z" fill="currentColor"/></svg>`;
+      intro.appendChild(el("span",null,"Press Run to test your code on the sample cases; your output appears next to the expected output. Press Submit to run every test, including hidden ones."));
+      body.appendChild(intro);
+      const c = S.code[q.id];
+      if (c && c.submit) body.appendChild(el("p","note",`Last Submit: ${c.submit.passed} of ${c.submit.total} tests passed (${new Date(c.submit.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}).`));
+      return;
+    }
+    if (r.error) {
+      body.appendChild(el("p","verdict fail","Couldn't run your code"));
+      body.appendChild(el("pre","compile", r.error + "\n\nCheck your internet connection (the language runtime is downloaded on first use) and try again."));
+      return;
+    }
+    const res = r.res;
+    if (res.compileError) {
+      body.appendChild(el("p","verdict fail", isSQL(q) ? "Query error" : "Compilation error"));
+      body.appendChild(el("pre","compile", res.compileError));
+      return;
+    }
+    const passed = res.results.filter(x => x.status === "pass").length;
+    const total = res.results.length;
+    const bad = res.results.find(x => x.status !== "pass");
+    const label = !bad ? "Accepted" : bad.status === "tle" ? "Time limit exceeded" : bad.status === "error" ? (isSQL(q) ? "Query error" : "Runtime error") : "Wrong answer";
+    body.appendChild(el("p", "verdict " + (!bad ? "pass" : bad.status === "tle" ? "warn" : "fail"), label));
+    body.appendChild(el("p","vsub", `${passed} / ${total} ${r.mode === "run" ? "sample " : ""}tests passed${r.mode === "submit" ? " · recorded" : ""}${r.lang && !isSQL(q) ? " · " + LANG[r.lang] : ""}`));
+
+    const chips = el("div","cases");
+    let sampleNo = 0, hiddenNo = 0;
+    const names = r.tests.map(t => t.sample ? `Case ${++sampleNo}` : `Hidden ${++hiddenNo}`);
+    res.results.forEach((x, i) => {
+      const b = el("button", "case " + x.status); b.type = "button";
+      b.append(el("i"), el("span", null, names[i]));
+      b.setAttribute("aria-pressed", i === selCase[q.id]);
+      b.title = x.status === "pass" ? "Passed" : x.status === "tle" ? "Time limit exceeded" : x.status === "fail" ? "Wrong answer" : "Error";
+      b.onclick = () => { selCase[q.id] = i; renderOut(q); };
+      chips.appendChild(b);
+    });
+    body.appendChild(chips);
+
+    const i = Math.min(selCase[q.id] || 0, total - 1);
+    const t = r.tests[i], x = res.results[i];
+    if (!t || !x) return;
+    if (!t.sample) {
+      body.appendChild(el("p","note", "Hidden test: its input isn't shown." + (x.status === "pass" ? " Passed." : "")));
+      if (x.status !== "pass") {
+        const kv = el("div","kv");
+        kv.append(el("b",null,"Result"), el("pre","bad", x.error || x.why || (x.status === "fail" ? "Wrong answer" : x.status)));
+        body.appendChild(kv);
+      }
+      return;
+    }
+    if (isSQL(q)) {
+      if (x.error) { body.appendChild(el("pre","compile", x.error)); return; }
+      if (x.why) body.appendChild(el("p","note", x.why));
+      const cmp = el("div","cmp");
+      cmp.append(dataTable(x.got.columns, x.got.rows, "Your output"), dataTable(t.expected.columns, t.expected.rows, "Expected"));
+      body.appendChild(cmp);
+      return;
+    }
+    const kv = el("div","kv");
+    kv.append(el("b",null,"Input"), el("pre",null,clip(t.show)));
+    kv.append(el("b",null,"Expected"), el("pre",null,clip(String(fmtVal(q, t.expected)))));
+    if (x.status === "error" || x.status === "tle" || x.status === "skipped") kv.append(el("b",null,"Error"), el("pre","bad", x.error || "Error"));
+    else kv.append(el("b",null,"Your output"), el("pre", x.status === "pass" ? "good" : "bad", clip(String(fmtVal(q, x.got)))));
+    if (x.stdout) kv.append(el("b",null,"Printed"), el("pre",null,clip(x.stdout, 2000)));
+    body.appendChild(kv);
+  }
+
+  // tab-switch tracking
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && S && S.startedAt && !$("test").classList.contains("hidden")){
+      S.tabSwitches = (S.tabSwitches || 0) + 1; save();
+    }
+  });
+
+  // ── submit the whole test ──
+  const codingQs = () => paper.set2.filter(q => q.coding);
+  $("submitBtn").onclick = () => {
+    $("cAns").textContent = `${answeredCount()} / ${paper.set1.length}`;
+    $("cFlag").textContent = Object.values(S.flags).filter(Boolean).length;
+    $("cS2").textContent = `${paper.set2.filter(touched).length} / ${paper.set2.length}`;
+    $("cSub").textContent = `${codingQs().filter(q => S.code[q.id] && S.code[q.id].submit).length} / ${codingQs().length}`;
+    $("cTime").textContent = fmt(remainingMs());
+    $("submitErr").textContent = "";
+    $("confirm").classList.remove("hidden");
+    $("confirmBtn").focus();
+  };
+  $("cancelBtn").onclick = () => $("confirm").classList.add("hidden");
+  $("confirm").addEventListener("keydown", e => { if (e.key === "Escape") $("cancelBtn").click(); });
+  $("confirmBtn").onclick = () => doSubmit(false);
+
+  function payload(auto){
+    const set2 = {}, coding = {};
+    paper.set2.forEach(q => {
+      if (!q.coding) { set2[q.id] = S.set2[q.id] || ""; return; }
+      const c = S.code[q.id];
+      if (!c) { set2[q.id] = ""; return; }
+      const code = currentCode(q);
+      set2[q.id] = touched(q) ? code : "";
+      coding[q.id] = {
+        lang: c.lang,
+        submit: c.submit ? { passed: c.submit.passed, total: c.submit.total, at: c.submit.at, lang: c.submit.lang, stale: c.submit.hash !== hash(code) } : null
+      };
+    });
+    return { name: S.name, startedAt: S.startedAt, answers: S.answers, set2, coding, tabSwitches: S.tabSwitches || 0, autoSubmitted: auto };
+  }
+
+  async function doSubmit(auto){
+    if (submitting) return;
+    submitting = true;
+    $("confirmBtn").disabled = true; $("confirmBtn").textContent = "Submitting…";
+    try {
+      const r = await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload(auto))
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || "The server didn't accept the submission.");
+      clearInterval(timerId);
+      try { localStorage.setItem(DONE, "1"); localStorage.removeItem(KEY); } catch {}
+      S = null;
+      $("confirm").classList.add("hidden");
+      if (data.score){
+        $("doneScore").textContent = `Set 1 score: ${data.score.set1} / ${data.score.max}. Set 2 will be checked separately.`;
+        $("doneScore").classList.remove("hidden");
+      }
+      show("done");
+    } catch (err) {
+      submitting = false;
+      $("confirmBtn").disabled = false; $("confirmBtn").textContent = "Try again";
+      $("confirm").classList.remove("hidden");
+      $("submitErr").textContent = (err.message || "Submission failed.") + " Your answers are still saved here. Check your connection and try again.";
+    }
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F6FA; --surface:#FFFFFF; --ink:#15213A; --muted:#5A6781; --line:#D6DDE8;
+  --omr:#2B50D6; --omr-soft:#E7ECFD; --flag:#E2A812;
+  --ok:#1B8A5A; --ok-soft:#E3F4EC; --bad:#C2362B; --bad-soft:#FBE7E5;
+  --sans:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0F1520; --surface:#161E2C; --ink:#E5EAF3; --muted:#94A1B7; --line:#2A3447;
+    --omr:#7C97FF; --omr-soft:#1E2A4D; --flag:#F0C14B;
+    --ok:#4CC38A; --ok-soft:#16301F; --bad:#F07167; --bad-soft:#3A1C1A; color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--omr);outline-offset:2px}
+.hidden{display:none !important}
+.wrap{max-width:1160px;margin:0 auto;padding:0 20px}
+.btn{appearance:none;border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--omr);border-color:var(--omr);color:#fff}
+@media (prefers-color-scheme: dark){ .btn.primary{color:#0F1520} }
+.btn.danger{color:var(--bad)}
+.err{color:var(--bad);min-height:1.4em;font-size:15px}
+
+.login{max-width:380px;padding:120px 0}
+.login h1{margin:0 0 18px;font-size:30px}
+.login input{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 14px;margin:6px 0 12px}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:28px 0 18px;flex-wrap:wrap}
+header h1{margin:0;font-size:28px}
+.empty{background:var(--surface);border:1.5px dashed var(--line);border-radius:10px;padding:40px;color:var(--muted)}
+
+.table-wrap{overflow-x:auto;background:var(--surface);border:1.5px solid var(--line);border-radius:10px}
+table.list{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.list th,table.list td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+table.list th{font-size:14px;color:var(--muted);font-weight:700}
+table.list tr:last-child td{border-bottom:0}
+table.list tbody tr{cursor:pointer}
+table.list tbody tr:hover{background:var(--paper)}
+.pending{color:var(--flag);font-weight:700}
+.warn{color:var(--bad);font-weight:700}
+
+/* detail */
+.back{margin:24px 0 8px}
+.d-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:22px}
+.d-head h1{margin:0;font-size:32px}
+.d-head .meta{color:var(--muted)}
+.totals{display:flex;gap:0;border:1.5px solid var(--ink);border-radius:4px;background:var(--surface)}
+.totals div{padding:10px 18px;min-width:110px}
+.totals div+div{border-left:1.5px solid var(--ink)}
+.totals small{display:block;color:var(--muted);font-size:13px}
+.totals b{font-size:24px;font-variant-numeric:tabular-nums}
+
+.topics{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:28px}
+.topic{background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px}
+.topic h3{margin:0 0 6px;font-size:15.5px}
+.topic .num{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--line);margin:8px 0 6px}
+.bar i{display:block}
+.topic .split{font-size:13.5px;color:var(--muted)}
+
+h2.sec{font-size:22px;margin:32px 0 12px}
+.filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+.qrow{background:var(--surface);border:1.5px solid var(--line);border-left-width:5px;border-radius:8px;padding:14px 18px;margin-bottom:10px}
+.qrow.ok{border-left-color:var(--ok)}
+.qrow.bad{border-left-color:var(--bad)}
+.qrow.skip{border-left-color:var(--muted)}
+.qrow .top{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--muted)}
+.qrow .verdict{font-weight:700}
+.qrow.ok .verdict{color:var(--ok)} .qrow.bad .verdict{color:var(--bad)}
+.qrow p.q{margin:4px 0 10px;max-width:75ch}
+pre.code{font-family:var(--mono);font-size:13px;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow-x:auto;margin:0 0 10px}
+.qrow ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.qrow li{padding:5px 10px;border-radius:6px;display:flex;gap:10px}
+.qrow li b{min-width:1.2em}
+.qrow li.right{background:var(--ok-soft);color:var(--ok);font-weight:700}
+.qrow li.picked-wrong{background:var(--bad-soft);color:var(--bad);font-weight:700;text-decoration:line-through}
+.qrow .why{margin:10px 0 0;font-size:14.5px;color:var(--muted);max-width:80ch}
+
+.ans2{background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.ans2 .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.ans2 h3{margin:0;font-size:18px}
+.ans2 a{color:var(--omr)}
+.ans2 pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;margin:12px 0;max-height:480px;overflow:auto}
+.ans2 .blank{color:var(--muted);font-style:italic;margin:12px 0}
+pre{font-variant-ligatures:none;font-feature-settings:"calt" 0,"liga" 0}
+.grade{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.grade label{font-size:14px;font-weight:700;display:flex;flex-direction:column;gap:4px}
+.grade input{width:90px;border:1.5px solid var(--line);border-radius:6px;padding:7px 10px;background:var(--paper)}
+.grade textarea{width:min(520px,80vw);min-height:40px;border:1.5px solid var(--line);border-radius:6px;padding:7px 10px;background:var(--paper);resize:vertical}
+.runline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 0;font-size:15px}
+.badge{font-weight:700;border-radius:999px;padding:2px 10px;font-size:13.5px;background:var(--paper);border:1px solid var(--line)}
+.badge.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.badge.part{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.rerun{margin:10px 0 0;font-size:14.5px}
+.rerun .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.rerun .chip{font-size:12px;font-weight:700;border-radius:5px;padding:1px 7px;background:var(--ok-soft);color:var(--ok)}
+.rerun .chip.bad{background:var(--bad-soft);color:var(--bad)}
+.rerun pre{max-height:200px}
+.savebar{display:flex;gap:12px;align-items:center;margin:16px 0 60px}
+.savebar .status{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<main id="login" class="wrap login">
+  <h1>Test results</h1>
+  <label for="pw"><b>Admin password</b></label>
+  <input id="pw" type="password" autocomplete="current-password">
+  <button class="btn primary" id="loginBtn">Open results</button>
+  <div class="err" id="loginErr"></div>
+</main>
+
+<main id="list" class="wrap hidden">
+  <header>
+    <h1>Submissions</h1>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="refreshBtn">Refresh</button>
+      <button class="btn" id="logoutBtn">Sign out</button>
+    </div>
+  </header>
+  <div id="listBody"></div>
+</main>
+
+<main id="detail" class="wrap hidden"></main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const L = ["A","B","C","D","E","F"];
+  const LANG = { python: "Python 3", java: "Java 8", cpp: "C++17", mysql: "MySQL", spark: "Spark SQL" };
+  let PW = sessionStorage.getItem("admin_pw") || "";
+  let DATA = null;
+
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const fmtDate = (t) => new Date(t).toLocaleString(undefined, { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
+  const fmtDur = (s) => { const m = Math.floor(s/60); return m >= 60 ? `${Math.floor(m/60)}h ${m%60}m` : `${m}m ${s%60}s`; };
+  const view = (id) => ["login","list","detail"].forEach(x => $(x).classList.toggle("hidden", x !== id));
+
+  async function api(method, body){
+    const r = await fetch("/api/admin", {
+      method, headers: { "Content-Type": "application/json", "x-admin-password": PW },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(d.error || "Request failed."); e.status = r.status; throw e; }
+    return d;
+  }
+
+  async function loadAll(){
+    DATA = await api("GET");
+    renderList();
+  }
+
+  $("loginBtn").onclick = async () => {
+    PW = $("pw").value; $("loginErr").textContent = "";
+    try { await loadAll(); sessionStorage.setItem("admin_pw", PW); view("list"); }
+    catch (e) { $("loginErr").textContent = e.message; }
+  };
+  $("pw").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
+  $("logoutBtn").onclick = () => { sessionStorage.removeItem("admin_pw"); PW = ""; $("pw").value = ""; view("login"); };
+  $("refreshBtn").onclick = async () => { try { await loadAll(); } catch (e) { alert(e.message); } };
+
+  function set2Score(sub){
+    const graded = sub.set2.filter(a => a.marks !== null && a.marks !== undefined);
+    const score = graded.reduce((s,a) => s + Number(a.marks), 0);
+    return { score, graded: graded.length, total: sub.set2.length };
+  }
+  const set2Max = () => DATA.set2.reduce((s,q) => s + q.marks, 0);
+
+  function renderList(){
+    const box = $("listBody"); box.innerHTML = "";
+    if (!DATA.submissions.length){
+      box.appendChild(el("div","empty","No submissions yet. Share the test link, and results will show up here once it's submitted."));
+      return;
+    }
+    const wrap = el("div","table-wrap"); const t = el("table","list");
+    t.innerHTML = "<thead><tr><th>Name</th><th>Submitted</th><th>Time taken</th><th>Set 1</th><th>Set 2</th><th>Total</th><th>Tab switches</th></tr></thead>";
+    const tb = el("tbody");
+    DATA.submissions.forEach(sub => {
+      const s2 = set2Score(sub);
+      const tr = el("tr"); tr.tabIndex = 0;
+      const pending = s2.graded < s2.total;
+      const cells = [
+        sub.name,
+        fmtDate(sub.submittedAt) + (sub.autoSubmitted ? " (time ran out)" : ""),
+        fmtDur(sub.timeTakenSec),
+        `${sub.set1.score} / ${sub.set1.max}`,
+        pending ? `${s2.graded}/${s2.total} checked` : `${s2.score} / ${set2Max()}`,
+        `${+(sub.set1.score + s2.score).toFixed(2)} / ${sub.set1.max + set2Max()}`,
+        String(sub.tabSwitches)
+      ];
+      cells.forEach((c, i) => {
+        const td = el("td", null, c);
+        if (i === 4 && pending) td.className = "pending";
+        if (i === 6 && sub.tabSwitches > 3) td.className = "warn";
+        tr.appendChild(td);
+      });
+      tr.onclick = () => renderDetail(sub.id);
+      tr.onkeydown = (e) => { if (e.key === "Enter") renderDetail(sub.id); };
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb); wrap.appendChild(t); box.appendChild(wrap);
+  }
+
+  function renderDetail(id){
+    const sub = DATA.submissions.find(s => s.id === id);
+    const qById = Object.fromEntries(DATA.set1.map(q => [q.id, q]));
+    const root = $("detail"); root.innerHTML = "";
+    view("detail"); window.scrollTo(0,0);
+
+    const back = el("button","btn back","Back to all submissions");
+    back.onclick = () => { renderList(); view("list"); };
+    root.appendChild(back);
+
+    // head
+    const s2 = set2Score(sub);
+    const head = el("div","d-head");
+    const left = el("div");
+    left.append(el("h1",null,sub.name));
+    left.append(el("div","meta",
+      `Submitted ${fmtDate(sub.submittedAt)}${sub.autoSubmitted ? " when time ran out" : ""}. Took ${fmtDur(sub.timeTakenSec)}. Switched tabs ${sub.tabSwitches} time${sub.tabSwitches===1?"":"s"}.`));
+    const tot = el("div","totals");
+    [["Set 1", `${sub.set1.score}/${sub.set1.max}`],
+     ["Set 2", s2.graded < s2.total ? `${s2.score}/${set2Max()}*` : `${s2.score}/${set2Max()}`],
+     ["Total", `${+(sub.set1.score + s2.score).toFixed(2)}/${sub.set1.max + set2Max()}`]]
+     .forEach(([k,v]) => { const d = el("div"); d.append(el("small",null,k), el("b",null,v)); tot.appendChild(d); });
+    head.append(left, tot); root.appendChild(head);
+    if (s2.graded < s2.total) root.appendChild(el("p","meta",`* ${s2.total - s2.graded} Set 2 answer${s2.total - s2.graded === 1 ? "" : "s"} still to be checked.`));
+
+    // topic breakdown
+    const topics = el("div","topics");
+    Object.entries(sub.set1.byTopic).forEach(([name, t]) => {
+      const c = el("div","topic");
+      c.append(el("h3",null,name), el("div","num",`${t.correct} / ${t.total}`));
+      const bar = el("div","bar");
+      [[t.correct,"var(--ok)"],[t.wrong,"var(--bad)"],[t.skipped,"transparent"]].forEach(([n,col]) => {
+        const i = el("i"); i.style.width = (n / t.total * 100) + "%"; i.style.background = col; bar.appendChild(i);
+      });
+      c.append(bar, el("div","split",`${t.correct} right, ${t.wrong} wrong, ${t.skipped} skipped`));
+      topics.appendChild(c);
+    });
+    root.appendChild(topics);
+
+    // set 1 answers
+    root.appendChild(el("h2","sec","Set 1 answers"));
+    const filters = el("div","filters"); const listBox = el("div");
+    const modes = [["all","All"],["bad","Wrong"],["skip","Skipped"],["ok","Right"]];
+    let mode = "all";
+    modes.forEach(([m, label]) => {
+      const b = el("button","btn",label); b.setAttribute("aria-pressed", m === mode);
+      b.onclick = () => { mode = m; [...filters.children].forEach(x => x.setAttribute("aria-pressed", x === b)); drawQs(); };
+      filters.appendChild(b);
+    });
+    root.append(filters, listBox);
+
+    function drawQs(){
+      listBox.innerHTML = "";
+      sub.set1.detail.forEach((d, idx) => {
+        const q = qById[d.id]; if (!q) return;
+        const state = d.chosen === null ? "skip" : d.correct ? "ok" : "bad";
+        if (mode !== "all" && mode !== state) return;
+        const row = el("div","qrow " + state);
+        const top = el("div","top");
+        top.append(el("span",null,`Q${idx+1}, ${q.topic}`),
+          el("span","verdict", state === "ok" ? "Right" : state === "bad" ? `Wrong, picked ${L[d.chosen]}` : "Skipped"));
+        row.append(top, el("p","q",q.q));
+        if (q.code) row.appendChild(el("pre","code",q.code));
+        const ol = el("ol");
+        q.options.forEach((o, k) => {
+          const li = el("li", k === q.answer ? "right" : (k === d.chosen ? "picked-wrong" : ""));
+          li.append(el("b",null,L[k]), el("span",null,o));
+          ol.appendChild(li);
+        });
+        row.appendChild(ol);
+        if (q.why) row.appendChild(el("p","why",q.why));
+        listBox.appendChild(row);
+      });
+      if (!listBox.children.length) listBox.appendChild(el("div","empty","No questions in this filter."));
+    }
+    drawQs();
+
+    // set 2 grading
+    root.appendChild(el("h2","sec","Set 2 answers"));
+    const inputs = {};
+    DATA.set2.forEach((q, i) => {
+      const a = sub.set2.find(x => x.id === q.id) || { answer:"", marks:null, note:"" };
+      const box = el("div","ans2");
+      const top = el("div","top");
+      top.append(el("h3",null,`${i+1}. ${q.title}`), el("span","meta",`${q.type}, out of ${q.marks}`));
+      box.appendChild(top);
+      if (q.link){ const p = el("p"); const lk = el("a",null,"Problem link"); lk.href = q.link; lk.target = "_blank"; lk.rel = "noopener"; p.appendChild(lk); p.style.margin = "6px 0 0"; box.appendChild(p); }
+      let suggested = null;
+      if (q.coding) {
+        const line = el("div","runline");
+        if (a.lang) line.appendChild(el("span","badge", LANG[a.lang] || a.lang));
+        const run = a.run;
+        if (run) {
+          const t = run.at ? new Date(run.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+          line.appendChild(el("span", "badge " + (run.passed === run.total ? "ok" : "part"), `${run.passed}/${run.total} tests on his last Submit`));
+          line.appendChild(el("span","meta", `${run.lang && run.lang !== a.lang ? `in ${LANG[run.lang] || run.lang}, ` : ""}at ${t}${run.stale ? ". The code was edited after that Submit." : ""}`));
+          if (!run.stale && run.lang === a.lang) suggested = Math.round((q.marks * run.passed / run.total) * 2) / 2;
+        } else if (a.answer.trim()) line.appendChild(el("span","meta","He never pressed Submit on this question."));
+        box.appendChild(line);
+      }
+      if (a.answer.trim()) box.appendChild(el("pre",null,a.answer)); else box.appendChild(el("p","blank","No answer written."));
+      if (q.coding && a.answer.trim() && a.lang) {
+        const rr = el("div","rerun");
+        const btn = el("button","btn","Re-run tests here");
+        const outBox = el("div");
+        btn.onclick = async () => {
+          btn.disabled = true; outBox.innerHTML = ""; outBox.appendChild(el("span","meta","Loading the runner…"));
+          try {
+            const R = await import("/runner/runner.js");
+            const onStatus = (s) => { outBox.innerHTML = ""; outBox.appendChild(el("span","meta", s)); };
+            const tests = q.coding.tests;
+            const res = q.coding.kind === "sql"
+              ? await R.runSQL({ query: a.answer, spec: q.coding, tests, onStatus })
+              : await R.runDSA({ lang: a.lang, code: a.answer, spec: q.coding, tests, onStatus });
+            outBox.innerHTML = "";
+            if (res.compileError) { outBox.append(el("b",null,"Doesn't compile:"), el("pre",null,res.compileError)); return; }
+            const passed = res.results.filter(x => x.status === "pass").length;
+            outBox.appendChild(el("b",null,`Re-run: ${passed} / ${tests.length} tests passed (${(res.ms/1000).toFixed(1)} s)`));
+            const chips = el("div","chips");
+            let s = 0, h = 0;
+            res.results.forEach((x, i) => {
+              const name = tests[i].sample ? `Sample ${++s}` : `Hidden ${++h}`;
+              const c = el("span", "chip" + (x.status === "pass" ? "" : " bad"), name + (x.status === "pass" ? "" : ` · ${x.status === "tle" ? "time limit" : x.status === "fail" ? "wrong" : "error"}`));
+              if (x.error || x.why) c.title = x.error || x.why;
+              chips.appendChild(c);
+            });
+            outBox.appendChild(chips);
+            if (!inp.value) inp.placeholder = String(Math.round((q.marks * passed / tests.length) * 2) / 2);
+          } catch (e) {
+            outBox.innerHTML = ""; outBox.appendChild(el("span","warn", "Couldn't run: " + e.message));
+          } finally { btn.disabled = false; }
+        };
+        rr.append(btn, outBox);
+        box.appendChild(rr);
+      }
+      const g = el("div","grade");
+      const l1 = el("label",null,"Marks"); const inp = el("input"); inp.type = "number"; inp.min = 0; inp.max = q.marks; inp.step = "0.5";
+      inp.value = a.marks ?? ""; l1.appendChild(inp);
+      if (suggested !== null) inp.placeholder = String(suggested);
+      if (q.coding) l1.title = "The grey number is a suggestion: marks × share of tests passed.";
+      const l2 = el("label",null,"Note (optional)"); const ta = el("textarea"); ta.value = a.note || ""; l2.appendChild(ta);
+      g.append(l1, l2); box.appendChild(g);
+      inputs[q.id] = { inp, ta };
+      root.appendChild(box);
+    });
+
+    const sb = el("div","savebar");
+    const save = el("button","btn primary","Save Set 2 marks");
+    const status = el("span","status");
+    const del = el("button","btn danger","Delete submission"); del.style.marginLeft = "auto";
+    save.onclick = async () => {
+      const grades = {};
+      Object.entries(inputs).forEach(([k,{inp,ta}]) => grades[k] = { marks: inp.value, note: ta.value });
+      save.disabled = true; status.textContent = "Saving…";
+      try {
+        const r = await api("POST", { action: "grade", id: sub.id, grades });
+        const i = DATA.submissions.findIndex(s => s.id === sub.id); DATA.submissions[i] = r.submission;
+        renderDetail(sub.id);
+      } catch (e) { status.textContent = e.message; save.disabled = false; }
+    };
+    del.onclick = async () => {
+      if (!confirm(`Delete ${sub.name}'s submission? This can't be undone.`)) return;
+      try { await api("POST", { action: "delete", id: sub.id }); await loadAll(); view("list"); }
+      catch (e) { alert(e.message); }
+    };
+    sb.append(save, status, del); root.appendChild(sb);
+  }
+
+  // auto-login if this tab already has the password
+  (async () => {
+    if (!PW) { view("login"); return; }
+    try { await loadAll(); view("list"); } catch { view("login"); }
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Java runner</title>
+<!-- CheerpJ: a full Java runtime in the browser. javac comes from /runner/java/tools.jar (OpenJDK 8). -->
+<script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
+</head>
+<body>
+<pre id="console"></pre>
+<script>
+let ready = null;
+let n = 0;
+const con = document.getElementById("console");
+const enc = new TextEncoder();
+
+function init() {
+  return ready ||= cheerpjInit({ status: "none", version: 8 });
+}
+
+// Called by the parent page (same origin).
+window.javaWarm = () => init();
+
+window.javaConsole = () => con.textContent;
+
+window.javaRun = async (files, input, mainClass) => {
+  await init();
+  const k = ++n;
+  // /str/ is flat (no sub-folders), so each run gets a unique filename prefix.
+  // Main is package-private in the driver, so its file name doesn't have to be Main.java.
+  const names = Object.keys(files);
+  for (const name of names) cheerpjAddStringFile(`/str/r${k}_${name}`, enc.encode(files[name]));
+  cheerpjAddStringFile(`/str/r${k}_input.txt`, enc.encode(input));
+
+  con.textContent = "";
+  const code = await cheerpjRunMain("com.sun.tools.javac.Main", "/app/runner/java/tools.jar",
+    ...names.map((x) => `/str/r${k}_${x}`), "-d", "/files/", "-encoding", "UTF-8", "-nowarn");
+  const compileLog = con.textContent;
+  if (code !== 0) return { compileError: compileLog.trim() || `javac exited with code ${code}` };
+
+  con.textContent = "";
+  const exit = await cheerpjRunMain(mainClass, "/files/", `/str/r${k}_input.txt`);
+  return { out: con.textContent, exit };
+};
+</script>
+</body>
+</html>
