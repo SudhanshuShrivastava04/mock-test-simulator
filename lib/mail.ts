@@ -13,7 +13,8 @@ function tx() {
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port: Number(process.env.SMTP_PORT || 465),
     secure: Number(process.env.SMTP_PORT || 465) === 465,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    // Google shows app passwords in groups of four; the spaces aren't part of it
+    auth: { user: process.env.SMTP_USER, pass: (process.env.SMTP_PASS || "").replace(/\s+/g, "") },
   });
   return transport;
 }
@@ -46,7 +47,7 @@ Sign in with this Google account (${to}) to begin. After you submit, your result
   <p style="color:#666;font-size:13px;margin-top:24px">Sign in with Google as ${esc(to)}. After you submit, your results and solution links show up on your dashboard.</p>
 </div>`;
   try {
-    await tx().sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to, subject, text, html });
+    await tx().sendMail({ from: process.env.MAIL_FROM || `Mock Test Simulator <${process.env.SMTP_USER}>`, to, subject, text, html });
     return { status: "sent", at: Date.now() };
   } catch (e) {
     return { status: "failed", at: Date.now(), error: (e as Error).message.slice(0, 300) };

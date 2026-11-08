@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
@@ -22,7 +23,11 @@ export default function StudentsPage() {
         <Card className="self-start">
           <CardHeader>
             <CardTitle>Add students</CardTitle>
-            <CardDescription>Inviting someone to an assessment adds them here automatically.</CardDescription>
+            <CardDescription>
+              This only lets them sign in; no email is sent. To email a test link, open an{" "}
+              <Link href="/admin/assessments" className="text-primary hover:underline">assessment</Link> and use Invite
+              (that adds them here automatically).
+            </CardDescription>
           </CardHeader>
           <CardContent><AddStudentsForm /></CardContent>
         </Card>
