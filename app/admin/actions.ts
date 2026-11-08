@@ -12,7 +12,7 @@ import {
 import { PAPERS } from "@/lib/papers";
 import { sendInvite } from "@/lib/mail";
 import { appUrl } from "@/lib/env";
-import type { Assessment, Attempt } from "@/lib/types";
+import type { Assessment } from "@/lib/types";
 
 export type FormState = { ok?: boolean; message?: string } | null;
 
@@ -99,29 +99,34 @@ export async function inviteToAssessment(_: FormState, fd: FormData): Promise<Fo
   const bad = emails.filter((e) => !isEmail(e));
   const good = emails.filter(isEmail).slice(0, 100);
 
-  let invited = 0, sent = 0, already = 0;
+  const name = good.length === 1 ? String(fd.get("name") || "").trim().slice(0, 80) : "";
+
+  let invited = 0, resent = 0, sent = 0, done = 0;
   const failures: string[] = [];
   await Promise.all(
     good.map(async (email) => {
-      await ensureStudent(email, v.email);
-      if (await getAttempt(a.id, email)) { already++; return; }
+      await ensureStudent(email, v.email, name);
+      const existing = await getAttempt(a.id, email);
+      if (existing?.submittedAt) { done++; return; }
+      // a pending invite gets its email sent again, since that's usually why it's re-entered
       const mail = await sendInvite({ to: email, assessment: a, url: inviteUrl(a.id), invitedBy: v.email });
-      const t: Attempt = { assessmentId: a.id, email, invitedAt: Date.now(), invitedBy: v.email, mail };
-      await saveAttempt(t);
-      invited++;
+      await saveAttempt(existing ? { ...existing, mail } : { assessmentId: a.id, email, invitedAt: Date.now(), invitedBy: v.email, mail });
+      if (existing) resent++; else invited++;
       if (mail.status === "sent") sent++;
       if (mail.status === "failed") failures.push(email);
     }),
   );
   refresh();
+  const total = invited + resent;
   const parts = [];
   if (invited) parts.push(`Invited ${invited}.`);
-  if (invited && sent < invited) parts.push(sent ? `${sent} email${sent > 1 ? "s" : ""} sent.` : "No emails sent: copy the invite link and share it.");
-  else if (sent) parts.push(`Email${sent > 1 ? "s" : ""} sent.`);
+  if (resent) parts.push(`Re-sent ${resent} pending invite${resent > 1 ? "s" : ""}.`);
+  if (total && sent === total) parts.push(`Email${sent > 1 ? "s" : ""} sent.`);
+  else if (total) parts.push(sent ? `${sent} of ${total} emails sent.` : "No emails sent: copy the invite link and share it.");
   if (failures.length) parts.push(`Couldn't email ${failures.join(", ")}.`);
-  if (already) parts.push(`${already} already invited.`);
+  if (done) parts.push(`${done} already submitted (use Allow retake on the assessment page).`);
   if (bad.length) parts.push(`Skipped invalid: ${bad.join(", ")}.`);
-  return { ok: invited > 0 || already > 0, message: parts.join(" ") };
+  return { ok: total > 0 || done > 0, message: parts.join(" ") };
 }
 
 export async function resendInvite(assessmentId: string, email: string) {
@@ -151,8 +156,11 @@ export async function allowRetake(assessmentId: string, email: string) {
   refresh();
 }
 
-export async function addStudents(_: FormState, fd: FormData): Promise<FormState> {
+export async function addStudents(prev: FormState, fd: FormData): Promise<FormState> {
   const v = await requireAdmin();
+  // picking an assessment turns "add" into "add + invite + email the link"
+  const assessmentId = String(fd.get("assessmentId") || "");
+  if (assessmentId && assessmentId !== "none") return inviteToAssessment(prev, fd);
   const emails = parseEmails(String(fd.get("emails") || ""));
   const name = String(fd.get("name") || "").trim().slice(0, 80);
   if (!emails.length) return { message: "Add at least one email address." };

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
-import { allAttempts, listStudents, listSubmissions } from "@/lib/data";
+import { allAttempts, listAssessments, listStudents, listSubmissions } from "@/lib/data";
+import { windowState } from "@/lib/status";
 import { AppMain, Empty, ListSkeleton, PageHeader, fmtDate } from "@/components/shared";
 import { AddStudentsForm, RemoveStudent } from "@/components/admin/student-controls";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,19 +20,25 @@ export default function StudentsPage() {
         <Suspense fallback={<ListSkeleton />}>
           <List />
         </Suspense>
-        <Card className="self-start">
-          <CardHeader>
-            <CardTitle>Add students</CardTitle>
-            <CardDescription>
-              This only lets them sign in; no email is sent. To email a test link, open an{" "}
-              <Link href="/admin/assessments" className="text-primary hover:underline">assessment</Link> and use Invite
-              (that adds them here automatically).
-            </CardDescription>
-          </CardHeader>
-          <CardContent><AddStudentsForm /></CardContent>
-        </Card>
+        <Suspense fallback={<ListSkeleton rows={2} />}>
+          <AddCard />
+        </Suspense>
       </div>
     </AppMain>
+  );
+}
+
+async function AddCard() {
+  await requireAdmin();
+  const open = (await listAssessments()).filter((a) => windowState(a) !== "closed");
+  return (
+    <Card className="self-start">
+      <CardHeader>
+        <CardTitle>Add students</CardTitle>
+        <CardDescription>Adds them to your list and, if you pick an assessment, emails them its link.</CardDescription>
+      </CardHeader>
+      <CardContent><AddStudentsForm assessments={open.map((a) => ({ id: a.id, title: a.title }))} /></CardContent>
+    </Card>
   );
 }
 
