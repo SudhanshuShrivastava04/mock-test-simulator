@@ -74,6 +74,8 @@ export type Assessment = {
   opensAt: number | null;
   closesAt: number | null;
   releaseResults: boolean;
+  /** camera + mic, full-screen share and location required to start (default on) */
+  proctoring?: boolean;
   archived?: boolean;
   createdAt: number;
   createdBy: string;
@@ -90,6 +92,7 @@ export type Attempt = {
   startedAt?: number;
   submittedAt?: number;
   submissionId?: string;
+  location?: { lat: number; lon: number; acc: number };
 };
 
 export type Set2Answer = {

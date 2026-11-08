@@ -34,7 +34,7 @@ type Row = { idx: number; q: Mcq; chosen: number | null; state: "ok" | "bad" | "
 function QuestionRow({ r }: { r: Row }) {
   const { q, chosen, state } = r;
   return (
-    <div className={cn("rounded-xl border border-l-4 bg-card p-4", state === "ok" ? "border-l-success" : state === "bad" ? "border-l-destructive" : "border-l-muted-foreground/40")}>
+    <div className={cn("min-w-0 rounded-xl border border-l-4 bg-card p-4", state === "ok" ? "border-l-success" : state === "bad" ? "border-l-destructive" : "border-l-muted-foreground/40")}>
       <div className="mb-2 flex justify-between gap-3 text-xs text-muted-foreground">
         <span>Q{r.idx + 1} · {q.topic}</span>
         <span className={cn("font-semibold", state === "ok" ? "text-success" : state === "bad" ? "text-destructive" : "")}>
@@ -42,7 +42,7 @@ function QuestionRow({ r }: { r: Row }) {
         </span>
       </div>
       <p className="font-medium">{q.q}</p>
-      {q.code && <pre className="mt-2 overflow-x-auto rounded-lg border bg-muted/50 p-3 font-mono text-[13px] leading-relaxed">{q.code}</pre>}
+      {q.code && <pre className="mt-2 max-w-full overflow-x-auto rounded-lg border bg-muted/50 p-3 font-mono text-[13px] leading-relaxed">{q.code}</pre>}
       <ol className="mt-3 grid gap-1.5">
         {q.options.map((o, k) => (
           <li key={k} className={cn("flex gap-2 rounded-md px-2 py-1 text-sm", k === q.answer && "bg-success-soft", k === chosen && k !== q.answer && "bg-danger-soft")}>
@@ -67,12 +67,12 @@ export function Set1Answers({ set1, questions }: { set1: Set1Result; questions: 
     { v: "ok", label: "Right", rows: rows.filter((r) => r.state === "ok") },
   ];
   return (
-    <Tabs defaultValue="all">
-      <TabsList>
+    <Tabs defaultValue="all" className="min-w-0">
+      <TabsList className="max-w-full justify-start overflow-x-auto">
         {tabs.map((t) => <TabsTrigger key={t.v} value={t.v}>{t.label} <span className="text-muted-foreground tabular-nums">{t.rows.length}</span></TabsTrigger>)}
       </TabsList>
       {tabs.map((t) => (
-        <TabsContent key={t.v} value={t.v} className="mt-3 grid gap-3">
+        <TabsContent key={t.v} value={t.v} className="mt-3 grid min-w-0 grid-cols-1 gap-3">
           {t.rows.length ? t.rows.map((r) => <QuestionRow key={r.q.id} r={r} />) : <p className="py-6 text-center text-sm text-muted-foreground">Nothing here.</p>}
         </TabsContent>
       ))}

@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // Static shells + streamed dynamic parts (Partial Prerendering) and partial link prefetching.
   cacheComponents: true,
   partialPrefetching: true,
+  // auto-memoizes components, so typing in the editor doesn't re-render the whole exam
+  reactCompiler: true,
   poweredByHeader: false,
   experimental: {
     serverActions: { bodySizeLimit: "1mb" }, // a full submission with code is well under this

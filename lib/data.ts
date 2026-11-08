@@ -168,3 +168,67 @@ export function set2Score(s: Submission) {
   const graded = s.set2.filter((a) => a.marks !== null && a.marks !== undefined);
   return { score: graded.reduce((t, a) => t + Number(a.marks), 0), graded: graded.length, total: s.set2.length };
 }
+
+// ── server-verified Submit results (one per coding question, per attempt) ──
+export type RunRecord = { passed: number; total: number; at: number; lang: string; hash: string; compileError?: boolean };
+const runsKey = (aid: string, email: string, startedAt: number) => `runs:${aid}:${email}:${startedAt}`;
+
+export async function saveRun(aid: string, email: string, startedAt: number, qid: string, r: RunRecord) {
+  await cmd("HSET", runsKey(aid, email, startedAt), qid, JSON.stringify(r));
+}
+export async function getRuns(aid: string, email: string, startedAt: number): Promise<Record<string, RunRecord>> {
+  const flat = ((await cmd("HGETALL", runsKey(aid, email, startedAt))) as string[]) || [];
+  const out: Record<string, RunRecord> = {};
+  for (let i = 0; i < flat.length; i += 2) { const v = parse<RunRecord>(flat[i + 1]); if (v) out[flat[i]] = v; }
+  return out;
+}
+
+/** A short-lived lock (SET NX EX). Returns false if someone already holds it. */
+export async function tryLock(key: string, seconds: number) {
+  return (await cmd("SET", `lock:${key}`, "1", "NX", "EX", seconds)) === "OK";
+}
+export async function unlock(key: string) {
+  await cmd("DEL", `lock:${key}`);
+}
+
+// ── proctoring evidence (events, location, camera and screen snapshots) ──
+export type ProctorEvent = { t: number; kind: string; detail?: string };
+export type ShotMeta = { t: number; kind: "cam" | "screen" };
+const KEEP_DAYS = 90;
+export const proctorBase = (aid: string, email: string, startedAt: number) => `pr:${aid}:${email}:${startedAt}`;
+
+export async function addProctorEvent(base: string, e: ProctorEvent) {
+  await pipe([
+    ["RPUSH", `${base}:ev`, JSON.stringify(e)],
+    ["LTRIM", `${base}:ev`, -1000, -1],
+    ["EXPIRE", `${base}:ev`, KEEP_DAYS * 86400],
+  ]);
+}
+
+/** Keeps the most recent `max` snapshots; meta and image lists stay index-aligned. */
+export async function addProctorShot(base: string, meta: ShotMeta, dataUrl: string, max = 160) {
+  await pipe([
+    ["RPUSH", `${base}:meta`, JSON.stringify(meta)],
+    ["RPUSH", `${base}:img`, dataUrl],
+    ["LTRIM", `${base}:meta`, -max, -1],
+    ["LTRIM", `${base}:img`, -max, -1],
+    ["EXPIRE", `${base}:meta`, KEEP_DAYS * 86400],
+    ["EXPIRE", `${base}:img`, KEEP_DAYS * 86400],
+  ]);
+}
+
+export async function getProctor(base: string) {
+  const [ev, meta] = await pipe([["LRANGE", `${base}:ev`, 0, -1], ["LRANGE", `${base}:meta`, 0, -1]]);
+  return {
+    events: ((ev as string[]) || []).map((x) => parse<ProctorEvent>(x)).filter((x): x is ProctorEvent => !!x),
+    shots: ((meta as string[]) || []).map((x) => parse<ShotMeta>(x)).filter((x): x is ShotMeta => !!x),
+  };
+}
+
+export async function getProctorShot(base: string, i: number) {
+  return (await cmd<string | null>("LINDEX", `${base}:img`, i)) || null;
+}
+
+export async function deleteProctor(base: string) {
+  await pipe([["DEL", `${base}:ev`], ["DEL", `${base}:meta`], ["DEL", `${base}:img`]]);
+}

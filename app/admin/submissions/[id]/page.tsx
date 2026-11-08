@@ -11,6 +11,8 @@ import { AppMain, PageSkeleton, fmtDate } from "@/components/shared";
 import { Set1Answers, TopicBreakdown } from "@/components/submission/set1-review";
 import { ScoreTiles } from "@/components/submission/score-tiles";
 import { GradePanel } from "@/components/admin/grade-panel";
+import { ProctorPanel } from "@/components/admin/proctor-panel";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteSubmission, LinkStudentForm } from "@/components/admin/submission-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +42,7 @@ async function Detail({ params }: { params: PageProps<"/admin/submissions/[id]">
   const pub = publicPaper(paper).set2.map((q) => ({ ...q, link: paper.set2.find((x) => x.id === q.id)?.link }));
 
   return (
-    <div className="grid gap-8">
+    <div className="grid grid-cols-1 gap-8">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{sub.name}</h1>
@@ -70,14 +72,18 @@ async function Detail({ params }: { params: PageProps<"/admin/submissions/[id]">
         </Card>
       </div>
 
-      <section className="grid gap-3">
+      <Suspense fallback={<Skeleton className="h-40" />}>
+        <ProctorPanel sub={sub} />
+      </Suspense>
+
+      <section className="grid grid-cols-1 gap-3">
         <h2 className="text-lg font-semibold">Set 1 answers</h2>
         <Set1Answers set1={sub.set1} questions={paper.set1} />
       </section>
 
-      <section className="grid gap-3">
+      <section className="grid grid-cols-1 gap-3">
         <h2 className="text-lg font-semibold">Set 2 answers</h2>
-        <GradePanel submissionId={sub.id} assessmentId={sub.assessmentId!} questions={pub} answers={sub.set2} />
+        <GradePanel submissionId={sub.id} questions={pub} answers={sub.set2} />
       </section>
     </div>
   );

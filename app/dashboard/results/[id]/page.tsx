@@ -38,7 +38,7 @@ async function Result({ params }: { params: PageProps<"/dashboard/results/[id]">
   const s2 = set2Score(sub);
 
   return (
-    <div className="grid gap-8">
+    <div className="grid grid-cols-1 gap-8">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{a?.title || paper.config.title}</h1>
@@ -56,13 +56,13 @@ async function Result({ params }: { params: PageProps<"/dashboard/results/[id]">
       )}
 
       {released && (
-        <section className="grid gap-3">
+        <section className="grid grid-cols-1 gap-3">
           <h2 className="text-lg font-semibold">Set 1 by topic</h2>
           <TopicBreakdown set1={sub.set1} />
         </section>
       )}
 
-      <section className="grid gap-3">
+      <section className="grid grid-cols-1 gap-3">
         <h2 className="text-lg font-semibold">Set 2: your answers and solutions</h2>
         {paper.set2.map((q, i) => {
           const ans = sub.set2.find((x) => x.id === q.id);
@@ -98,7 +98,7 @@ async function Result({ params }: { params: PageProps<"/dashboard/results/[id]">
       </section>
 
       {released && (
-        <section className="grid gap-3">
+        <section className="grid grid-cols-1 gap-3">
           <h2 className="text-lg font-semibold">Set 1: answers with explanations</h2>
           <Set1Answers set1={sub.set1} questions={paper.set1} />
         </section>

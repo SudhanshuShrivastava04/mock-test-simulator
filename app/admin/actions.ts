@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/session";
 import {
-  deleteAttempt, deleteSubmission, getAssessment, getAttempt, getStudent, getSubmission, isEmail,
+  deleteAttempt, deleteProctor, deleteSubmission, proctorBase, getAssessment, getAttempt, getStudent, getSubmission, isEmail,
   linkSubmission, normEmail, paperFor, removeStudent, saveAssessment, saveAttempt, saveStudent, saveSubmission,
 } from "@/lib/data";
 import { PAPERS } from "@/lib/papers";
@@ -69,13 +69,14 @@ export async function updateAssessment(_: FormState, fd: FormData): Promise<Form
   return { ok: true, message: "Saved." };
 }
 
-export async function setAssessmentFlags(id: string, flags: { releaseResults?: boolean; archived?: boolean }) {
+export async function setAssessmentFlags(id: string, flags: { releaseResults?: boolean; archived?: boolean; proctoring?: boolean }) {
   await requireAdmin();
   const a = await getAssessment(id);
   if (!a) throw new Error("That assessment no longer exists.");
   const next = { ...a };
   if (typeof flags.releaseResults === "boolean") next.releaseResults = flags.releaseResults;
   if (typeof flags.archived === "boolean") next.archived = flags.archived;
+  if (typeof flags.proctoring === "boolean") next.proctoring = flags.proctoring;
   await saveAssessment(next);
   refresh();
 }
@@ -201,7 +202,10 @@ export async function gradeSubmission(id: string, grades: Record<string, { marks
 export async function deleteSubmissionAction(id: string) {
   await requireAdmin();
   const sub = await getSubmission(id);
-  if (sub) await deleteSubmission(sub);
+  if (sub) {
+    await deleteSubmission(sub);
+    if (sub.email) await deleteProctor(proctorBase(sub.assessmentId!, sub.email, sub.startedAt)); // snapshots go with it
+  }
   refresh();
   redirect("/admin/submissions");
 }

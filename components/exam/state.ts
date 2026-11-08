@@ -1,6 +1,7 @@
 "use client";
 
 import type { PublicPaper, PublicSet2Q } from "@/lib/types";
+import { hash } from "@/lib/hash";
 
 export type SubmitMark = { passed: number; total: number; at: number; hash: string; lang: string; compileError?: boolean };
 export type CodeState = { lang: string; src: Record<string, string>; submit?: SubmitMark };
@@ -31,7 +32,7 @@ export function saveState(key: string, s: ExamState) {
 }
 
 export const isSQL = (q: PublicSet2Q) => q.coding?.kind === "sql";
-export const hash = (s: string) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h >>> 0); };
+export { hash } from "@/lib/hash";
 export const starterOf = (q: PublicSet2Q, lang: string) => {
   const st = q.coding!.starter;
   return typeof st === "string" ? st : st[lang as keyof typeof st] || "";

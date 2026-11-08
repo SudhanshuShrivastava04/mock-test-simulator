@@ -39,7 +39,8 @@ Any email listed in `ADMIN_EMAILS` signs in as admin; any email you've added as 
      [App Password](https://myaccount.google.com/apppasswords). Without these, invites are still created
      and you share the link yourself ("Copy invite link").
    - `KV_REST_API_URL`, `KV_REST_API_TOKEN`: already there from the Upstash integration.
-3. Push to `main`. Vercel builds and deploys it.
+   - `JUDGE_SNAPSHOT_ID`: the code-judge environment (see "Server-side judge" below).
+3. Push to `main`. Vercel builds and deploys it (functions run in Mumbai, `bom1`, next to the database).
 
 ## Where things are
 
@@ -51,14 +52,16 @@ app/
   admin/actions.ts             every admin mutation (Server Actions, each checks the admin role)
   dashboard/                   student: upcoming tests, past attempts, results
   test/[id]/                   start screen + the exam; test/actions.ts starts and submits attempts
-  api/tests/[assessmentId]/[qid]  full test cases for Submit (signed-in, started attempts only)
-components/exam/               exam workspace (client): Set 1 MCQs, Set 2 editor + runner output
+  api/judge/                   server-side grading in Vercel Sandbox (verdicts only for students)
+  api/proctor/                 proctoring events and snapshots; api/proctor/shot serves snapshots to admins
+components/exam/               exam workspace (client): Set 1 MCQs, Set 2 editor + runner output, proctoring
 components/ui/                 shadcn/ui
 lib/
   auth.ts, session.ts          Auth.js config; data access layer (role checked on every request)
   data.ts, kv.ts               Redis records and the Upstash REST client (file store in dev)
   papers/mock-01/              the question bank (Set 1 MCQs + answer key, Set 2 coding specs, tests)
   mail.ts                      invite emails
+  judge/                       sandbox judge: harness scripts, SQL helpers, verdicts
 public/runner/                 in-browser runtimes: Python (Pyodide), C++ (Clang/WASI), Java (CheerpJ), SQL (DuckDB)
 proxy.ts                       bounces signed-out visitors to /login before rendering
 ```
@@ -88,10 +91,42 @@ student's Gmail address, and it appears on their dashboard.
   that model: no in-memory state on the server (sessions are signed cookies, data lives in Redis), and
   Upstash is reached over HTTPS with batched pipelines, so any number of instances can serve traffic
   without exhausting database connections.
-- **Code runs in the candidate's browser.** Running and grading code costs the server nothing, however many
-  students test at once. Runtime files are static assets cached at the edge and in the browser.
-- **Smaller exam payload.** The exam page ships only the sample tests; hidden tests (the bulk of the data)
-  load once, on the first Submit for each question.
+- **Region.** Functions run in Mumbai (`bom1`, set in `vercel.json`), the same region as the Upstash database,
+  so each database call is a millisecond hop instead of a round trip to the US.
+- **Sample runs in the browser, grading on the server.** Run costs the server nothing; Submit runs in an isolated
+  sandbox per request, so heavy grading never slows the web app.
+- **Smaller exam payload.** The exam page ships only the sample tests (about 70 KB instead of 600 KB).
+- **Less client work.** The React Compiler memoizes components automatically; the exam timer re-renders only itself,
+  and Set 1 / Set 2 stay mounted so switching between them is instant.
+
+## Server-side judge (hidden tests never reach the browser)
+
+- **Run** (sample tests) runs in the browser for instant feedback; sample tests are public anyway.
+- **Submit** sends the code to `/api/judge`. The server boots a fresh [Vercel Sandbox](https://vercel.com/docs/sandbox)
+  microVM (no network, no secrets), compiles and runs the code against every test, and returns only verdicts.
+  Hidden inputs, expected outputs and the program's output on hidden tests stay on the server.
+- The score saved with a submission is the server's own record of the last Submit, not what the browser reports.
+- Time limits per test: Python 4 s, Java 4 s, C++ 1 s. SQL runs in DuckDB with file access disabled.
+- The environment (g++, a JDK, Python, DuckDB) is a snapshot built once:
+  `vercel env pull .env.local && node tools/build-judge-snapshot.mjs`, then set the printed `JUDGE_SNAPSHOT_ID`.
+  `npx tsx --conditions=react-server tools/try-judge.mts` checks it end to end.
+- Cost: the Hobby plan includes 5 sandbox CPU-hours and 5,000 sandbox starts a month. One Submit is one start and
+  a few CPU-seconds.
+
+## Proctoring
+
+On by default for every assessment (switch it off per assessment under **Visibility**). Before **Begin** unlocks,
+the student must allow:
+
+- **Camera + microphone**: a 320 px snapshot every minute; the microphone only measures loudness and flags
+  sustained talking. Nothing is recorded continuously.
+- **Entire-screen share**: a low-res screenshot every 3 minutes. Sharing a window or tab is refused.
+- **Location**: recorded once at the start.
+
+During the test, stopping the camera or screen share blocks the test until it's turned back on (the timer keeps
+running), and these are logged: leaving the tab, switching windows, a second monitor, large pastes, sustained noise.
+The admin sees the location, a flag summary, the snapshots and a timeline on each submission. Evidence is kept 90 days
+and deleted with the submission. Proctored tests need a laptop or desktop (browsers on phones can't share the screen).
 
 ## Editing questions
 
@@ -104,7 +139,6 @@ student's Gmail address, and it appears on their dashboard.
 ## Good to know
 
 - Set 1 is graded on the server; the answer key never reaches the browser during a test.
-- Test inputs reach the browser (that's where the code runs), so hidden tests are hidden from view, not secret.
 - The timer is based on the server's start time. Closing the tab doesn't pause it, and the test submits
   itself when time runs out. Tab switches are counted.
 - "Allow retake" on an invite lets a student sit the test again; the earlier attempt stays in their history.

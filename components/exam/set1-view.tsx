@@ -9,7 +9,7 @@ import type { ExamState } from "./state";
 
 const L = ["A", "B", "C", "D", "E", "F"];
 
-export function Set1View({ paper, S, update, onDone }: { paper: PublicPaper; S: ExamState; update: (fn: (s: ExamState) => ExamState) => void; onDone: () => void }) {
+export function Set1View({ paper, S, update, onDone, active }: { paper: PublicPaper; S: ExamState; update: (fn: (s: ExamState) => ExamState) => void; onDone: () => void; active: boolean }) {
   const qs = paper.set1;
   const i = Math.min(S.cur, qs.length - 1);
   const q = qs[i];
@@ -18,6 +18,7 @@ export function Set1View({ paper, S, update, onDone }: { paper: PublicPaper; S: 
   const answered = qs.filter((x) => Number.isInteger(S.answers[x.id])).length;
 
   useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement as HTMLElement | null;
       if (el && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) return;
@@ -73,7 +74,7 @@ export function Set1View({ paper, S, update, onDone }: { paper: PublicPaper; S: 
               ? <Button onClick={() => go(i + 1)}>Next<ChevronRight /></Button>
               : <Button onClick={onDone}>Go to Set 2<ChevronRight /></Button>}
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">Keys: A–D to answer, ← → to move.</p>
+          <p className="mt-4 text-xs text-muted-foreground max-sm:hidden">Keys: A–D to answer, ← → to move.</p>
         </article>
 
         <aside className="self-start rounded-xl border bg-card p-4 md:sticky md:top-4" aria-label="Answer sheet">

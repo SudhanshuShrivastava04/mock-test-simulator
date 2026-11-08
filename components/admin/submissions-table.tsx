@@ -13,8 +13,37 @@ export function SubmissionsTable({
 }: { subs: Submission[]; assessments: Assessment[]; emptyIcon: React.ComponentType<{ className?: string }>; showAssessment?: boolean }) {
   if (!subs.length) return <Empty icon={emptyIcon} title="No submissions yet">Attempts show up here as soon as a student submits.</Empty>;
   const byId = Object.fromEntries(assessments.map((a) => [a.id, a]));
+  const rows = subs.map((s) => {
+    const a = byId[s.assessmentId!];
+    const max2 = set2Max(getPaper(a?.paperId));
+    const s2 = set2Score(s);
+    return { s, a, max2, s2, pending: s2.graded < s2.total };
+  });
   return (
-    <div className="overflow-x-auto">
+    <>
+    {/* phones: one card per submission */}
+    <ul className="grid gap-2 md:hidden">
+      {rows.map(({ s, a, max2, s2, pending }) => (
+        <li key={s.id}>
+          <Link href={`/admin/submissions/${s.id}`} className="block rounded-lg border p-3 hover:bg-muted/40">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate font-medium">{s.name}</div>
+                <div className="truncate text-xs text-muted-foreground">{s.email || "not linked to an account"}</div>
+              </div>
+              <div className="text-right font-semibold tabular-nums">{+(s.set1.score + s2.score).toFixed(2)}/{s.set1.max + max2}</div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {showAssessment && <span className="max-w-full truncate">{a?.title || s.assessmentId}</span>}
+              <span>{fmtDate(s.submittedAt)}</span>
+              <span>Set 1 {s.set1.score}/{s.set1.max}</span>
+              {pending ? <Badge className="border-0 bg-warning-soft text-warning">{s2.graded}/{s2.total} graded</Badge> : <span>Set 2 {s2.score}/{max2}</span>}
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
+    <div className="hidden overflow-x-auto md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -28,11 +57,7 @@ export function SubmissionsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {subs.map((s) => {
-            const a = byId[s.assessmentId!];
-            const max2 = set2Max(getPaper(a?.paperId));
-            const s2 = set2Score(s);
-            const pending = s2.graded < s2.total;
+          {rows.map(({ s, a, max2, s2, pending }) => {
             return (
               <TableRow key={s.id} className="relative">
                 <TableCell>
@@ -58,5 +83,6 @@ export function SubmissionsTable({
         </TableBody>
       </Table>
     </div>
+    </>
   );
 }

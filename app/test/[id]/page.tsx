@@ -12,6 +12,7 @@ import { AppHeader } from "@/components/app-header";
 import { HowItWorks } from "@/components/how-it-works";
 import { AppMain, PageSkeleton } from "@/components/shared";
 import { ExamLoader } from "@/components/exam/exam-loader";
+import { ProctorGate } from "@/components/exam/proctor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -71,7 +72,7 @@ async function Gate({ params }: { params: PageProps<"/test/[id]">["params"] }) {
     return (
       <ExamLoader
         paper={pub}
-        assessment={{ id: a.id, title: a.title, durationMinutes: a.durationMinutes }}
+        assessment={{ id: a.id, title: a.title, durationMinutes: a.durationMinutes, proctoring: a.proctoring !== false }}
         startedAt={t.startedAt}
         // eslint-disable-next-line react-hooks/purity -- request-time clock, rendered per request
         serverNow={Date.now()}
@@ -137,10 +138,18 @@ async function Gate({ params }: { params: PageProps<"/test/[id]">["params"] }) {
         <h2 className="mt-10 mb-3 text-lg font-semibold">How Set 2 coding works</h2>
         <HowItWorks />
 
-        <form action={startAttempt.bind(null, a.id)} className="mt-10 flex flex-wrap items-center gap-4 border-t pt-6">
-          <Button type="submit" size="lg">Begin test</Button>
-          <span className="text-sm text-muted-foreground">Signed in as {v.email}</span>
-        </form>
+        {a.proctoring !== false ? (
+          <section className="mt-10">
+            <h2 className="mb-1 text-lg font-semibold">Proctoring</h2>
+            <p className="mb-4 max-w-3xl text-sm text-muted-foreground">This test is monitored. Allow each item below; the test pauses if camera or screen sharing stops.</p>
+            <ProctorGate action={startAttempt.bind(null, a.id)} email={v.email} />
+          </section>
+        ) : (
+          <form action={startAttempt.bind(null, a.id)} className="mt-10 flex flex-wrap items-center gap-4 border-t pt-6">
+            <Button type="submit" size="lg" className="max-sm:w-full">Begin test</Button>
+            <span className="text-sm text-muted-foreground">Signed in as {v.email}</span>
+          </form>
+        )}
       </AppMain>
     </>
   );

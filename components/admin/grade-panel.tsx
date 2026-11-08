@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ExternalLink, Play, Save } from "lucide-react";
 import { gradeSubmission } from "@/app/admin/actions";
-import { fullTests, runCode, type RunOutput } from "@/lib/runner-client";
 import { LANG_LABEL } from "@/lib/status";
 import type { PublicSet2Q, Set2Answer } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -19,27 +18,28 @@ type Q = PublicSet2Q & { link?: string };
 
 const suggest = (marks: number, passed: number, total: number) => Math.round(marks * (passed / total) * 2) / 2;
 
-function Rerun({ assessmentId, q, a, onScore }: { assessmentId: string; q: Q; a: Set2Answer; onScore: (s: number) => void }) {
-  const [status, setStatus] = useState("");
+type RerunOut = { compileError?: string; results: { status: string; error?: string; why?: string }[]; ms: number; total: number; samples: number };
+
+function Rerun({ submissionId, q, onScore }: { submissionId: string; q: Q; onScore: (s: number) => void }) {
   const [busy, setBusy] = useState(false);
-  const [out, setOut] = useState<RunOutput | null>(null);
+  const [out, setOut] = useState<RerunOut | null>(null);
   const [err, setErr] = useState("");
   async function go() {
-    setBusy(true); setErr(""); setOut(null); setStatus("Loading the runner…");
+    setBusy(true); setErr(""); setOut(null);
     try {
-      const tests = await fullTests(assessmentId, q.id);
-      const res = await runCode(q, a.lang || "python", a.answer, tests, setStatus);
-      setOut(res);
-      if (!res.compileError) onScore(suggest(q.marks, res.results.filter((x) => x.status === "pass").length, tests.length));
+      const r = await fetch("/api/judge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId, qid: q.id }) });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || "Grading failed.");
+      setOut(data);
+      if (!data.compileError) onScore(suggest(q.marks, data.results.filter((x: { status: string }) => x.status === "pass").length, data.total));
     } catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); setStatus(""); }
+    finally { setBusy(false); }
   }
   let s = 0, h = 0;
   return (
     <div className="grid gap-2 rounded-lg border border-dashed p-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" variant="outline" onClick={go} disabled={busy}><Play />{busy ? "Running…" : "Re-run all tests here"}</Button>
-        {status && <span className="text-xs text-muted-foreground">{status}</span>}
+        <Button size="sm" variant="outline" onClick={go} disabled={busy}><Play />{busy ? "Grading on the server…" : "Re-run all tests"}</Button>
         {err && <span className="text-xs text-destructive">Couldn&apos;t run: {err}</span>}
       </div>
       {out?.compileError && <pre className="overflow-x-auto rounded-md bg-danger-soft p-2 font-mono text-xs text-destructive whitespace-pre-wrap">{out.compileError}</pre>}
@@ -48,7 +48,7 @@ function Rerun({ assessmentId, q, a, onScore }: { assessmentId: string; q: Q; a:
           <p className="text-sm font-medium">{out.results.filter((x) => x.status === "pass").length} / {out.results.length} passed in {(out.ms / 1000).toFixed(1)} s</p>
           <div className="flex flex-wrap gap-1">
             {out.results.map((x, i) => {
-              const name = i < q.coding!.tests.length ? `Sample ${++s}` : `Hidden ${++h}`;
+              const name = i < out.samples ? `Sample ${++s}` : `Hidden ${++h}`;
               return (
                 <span key={i} title={x.error || x.why || ""} className={cn("rounded px-1.5 py-0.5 text-[11px] font-semibold", x.status === "pass" ? "bg-success-soft text-success" : "bg-danger-soft text-destructive")}>
                   {name}{x.status !== "pass" && ` · ${x.status === "tle" ? "time limit" : x.status === "fail" ? "wrong" : "error"}`}
@@ -62,7 +62,7 @@ function Rerun({ assessmentId, q, a, onScore }: { assessmentId: string; q: Q; a:
   );
 }
 
-export function GradePanel({ submissionId, assessmentId, questions, answers }: { submissionId: string; assessmentId: string; questions: Q[]; answers: Set2Answer[] }) {
+export function GradePanel({ submissionId, questions, answers }: { submissionId: string; questions: Q[]; answers: Set2Answer[] }) {
   const byId = Object.fromEntries(answers.map((a) => [a.id, a]));
   const [grades, setGrades] = useState(() =>
     Object.fromEntries(questions.map((q) => [q.id, { marks: byId[q.id]?.marks == null ? "" : String(byId[q.id].marks), note: byId[q.id]?.note || "" }])),
@@ -101,7 +101,7 @@ export function GradePanel({ submissionId, assessmentId, questions, answers }: {
                 ? <pre className="max-h-96 overflow-auto rounded-lg border bg-muted/40 p-3 font-mono text-[13px] leading-relaxed">{a.answer}</pre>
                 : <p className="text-sm text-muted-foreground italic">No answer written.</p>}
               {q.coding && a.answer.trim() && (a.lang || q.coding.kind === "sql") && (
-                <Rerun assessmentId={assessmentId} q={q} a={a} onScore={(s) => setHints((h) => ({ ...h, [q.id]: s }))} />
+                <Rerun submissionId={submissionId} q={q} onScore={(s) => setHints((h) => ({ ...h, [q.id]: s }))} />
               )}
               <div className="grid gap-3 sm:grid-cols-[120px_1fr]">
                 <div className="grid gap-1.5">
@@ -119,7 +119,7 @@ export function GradePanel({ submissionId, assessmentId, questions, answers }: {
           </Card>
         );
       })}
-      <div className="sticky bottom-0 -mx-4 flex items-center gap-3 border-t bg-background/90 px-4 py-3 backdrop-blur">
+      <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-t-lg border-t bg-background/90 py-3 backdrop-blur">
         <Button disabled={pending} onClick={() => start(async () => {
           try { await gradeSubmission(submissionId, grades); toast.success("Marks saved"); } catch (e) { toast.error((e as Error).message); }
         })}><Save />{pending ? "Saving…" : "Save Set 2 marks"}</Button>

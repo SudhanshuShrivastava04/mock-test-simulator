@@ -38,13 +38,13 @@ async function Overview() {
         <Button asChild variant="outline"><Link href="/admin/students">Add students</Link></Button>
         <Button asChild><Link href="/admin/assessments">New assessment</Link></Button>
       </PageHeader>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {stats.map((s) => (
           <Link key={s.label} href={s.href} className="rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
             <Card className="h-full transition-colors hover:bg-muted/40">
               <CardHeader>
                 <CardDescription className="flex items-center gap-2"><s.icon className="size-4" />{s.label}</CardDescription>
-                <CardTitle className="text-3xl tabular-nums">{s.value}</CardTitle>
+                <CardTitle className="text-2xl tabular-nums sm:text-3xl">{s.value}</CardTitle>
                 {s.hint && <p className="text-xs text-warning">{s.hint}</p>}
               </CardHeader>
             </Card>

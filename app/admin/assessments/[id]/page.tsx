@@ -53,9 +53,10 @@ async function Detail({ params }: { params: PageProps<"/admin/assessments/[id]">
         <CopyLink url={link} />
       </PageHeader>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="grid min-w-0 gap-6">
-          <Card>
+      {/* on phones the two columns dissolve ("contents") so Invite can come first */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        <div className="contents lg:grid lg:min-w-0 lg:gap-6">
+          <Card className="order-2 min-w-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Users className="size-4" />Invited students</CardTitle>
               <CardDescription>{roster.length ? `${roster.filter((t) => t.submittedAt).length} of ${roster.length} submitted` : "Nobody invited yet."}</CardDescription>
@@ -64,7 +65,28 @@ async function Detail({ params }: { params: PageProps<"/admin/assessments/[id]">
               {!roster.length ? (
                 <Empty icon={Users} title="No invites yet">Add email addresses on the right. Each student signs in with Google to start.</Empty>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <ul className="grid gap-2 md:hidden">
+                  {roster.map((t) => {
+                    const st = attemptState(t, a);
+                    return (
+                      <li key={t.email} className="flex items-start gap-3 rounded-lg border p-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{names[t.email] || t.email.split("@")[0]}</div>
+                          <div className="truncate text-xs text-muted-foreground">{t.email}</div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <StateBadge state={st} />
+                            {t.submissionId && <Link className="text-primary hover:underline" href={`/admin/submissions/${t.submissionId}`}>View</Link>}
+                            <span>Invited {fmtDate(t.invitedAt, false)}</span>
+                            {t.mail && <span className={t.mail.status === "sent" ? "text-success" : t.mail.status === "failed" ? "text-destructive" : "text-warning"}>{MAIL_TEXT[t.mail.status]}</span>}
+                          </div>
+                        </div>
+                        <RosterActions assessmentId={a.id} email={t.email} submitted={!!t.submittedAt} started={!!t.startedAt} />
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="hidden overflow-x-auto md:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -111,11 +133,12 @@ async function Detail({ params }: { params: PageProps<"/admin/assessments/[id]">
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="order-3 min-w-0">
             <CardHeader>
               <CardTitle>Submissions</CardTitle>
               <CardDescription>Every attempt at this assessment, retakes included.</CardDescription>
@@ -126,22 +149,25 @@ async function Detail({ params }: { params: PageProps<"/admin/assessments/[id]">
           </Card>
         </div>
 
-        <div className="grid content-start gap-6">
-          <Card>
+        <div className="contents lg:grid lg:content-start lg:gap-6">
+          <Card className="order-1">
             <CardHeader><CardTitle>Invite</CardTitle></CardHeader>
             <CardContent><InviteForm assessmentId={a.id} /></CardContent>
           </Card>
-          <Card>
+          <Card className="order-4">
             <CardHeader><CardTitle>Visibility</CardTitle></CardHeader>
             <CardContent className="grid gap-4">
               <FlagSwitch id={a.id} flag="releaseResults" checked={a.releaseResults} label="Release results to students"
                 hint="Shows scores, correct answers, your marks and notes on their dashboard. Solution links are always shown after they submit." />
               <Separator />
+              <FlagSwitch id={a.id} flag="proctoring" checked={a.proctoring !== false} label="Proctoring"
+                hint="Students must allow camera, microphone, entire-screen sharing and location to start. Needs a laptop or desktop." />
+              <Separator />
               <FlagSwitch id={a.id} flag="archived" checked={!!a.archived} label="Archive"
                 hint="Closes the assessment to new attempts. Past results stay visible." />
             </CardContent>
           </Card>
-          <Card>
+          <Card className="order-5">
             <CardHeader><CardTitle>Settings</CardTitle></CardHeader>
             <CardContent><AssessmentForm action={updateAssessment} papers={papers} initial={a} submitLabel="Save changes" /></CardContent>
           </Card>

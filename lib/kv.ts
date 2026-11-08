@@ -28,7 +28,7 @@ async function upstash(cmds: Cmd[]): Promise<Result[]> {
 }
 
 // ── local dev store ──
-type Mem = { h: Record<string, Record<string, string>>; s: Record<string, string[]> };
+type Mem = { h: Record<string, Record<string, string>>; s: Record<string, string[]>; l?: Record<string, string[]>; k?: Record<string, { v: string; exp?: number }> };
 const FILE = path.join(process.cwd(), ".data", "dev-db.json");
 const g = globalThis as unknown as { __mem?: Mem };
 
@@ -49,12 +49,30 @@ function persist() {
 
 function local(cmds: Cmd[]): Result[] {
   const m = mem();
+  m.l ||= {}; m.k ||= {};
   let dirty = false;
   const res = cmds.map(([op, key, ...a]) => {
     const k = String(key);
     const h = (m.h[k] ||= {});
     const s = new Set(m.s[k] || []);
+    const l = (m.l![k] ||= []);
+    const idx = (i: number) => (i < 0 ? l.length + i : i);
+    const kv = m.k![k] && (!m.k![k].exp || m.k![k].exp! > Date.now()) ? m.k![k] : undefined;
     switch (String(op).toUpperCase()) {
+      case "RPUSH": l.push(...a.map(String)); dirty = true; return l.length;
+      case "LLEN": return l.length;
+      case "LINDEX": return l[idx(Number(a[0]))] ?? null;
+      case "LRANGE": return l.slice(Math.max(0, idx(Number(a[0]))), idx(Number(a[1])) + 1);
+      case "LTRIM": m.l![k] = l.slice(Math.max(0, idx(Number(a[0]))), idx(Number(a[1])) + 1); dirty = true; return "OK";
+      case "GET": return kv?.v ?? null;
+      case "SET": {
+        const flags = a.slice(1).map(String);
+        if (flags.includes("NX") && kv) return null;
+        const ex = flags.indexOf("EX");
+        m.k![k] = { v: String(a[0]), exp: ex >= 0 ? Date.now() + Number(flags[ex + 1]) * 1000 : undefined };
+        dirty = true; return "OK";
+      }
+      case "EXPIRE": return 1;
       case "HGET": return h[String(a[0])] ?? null;
       case "HMGET": return a.map((f) => h[String(f)] ?? null);
       case "HGETALL": return Object.entries(h).flat();
@@ -65,7 +83,7 @@ function local(cmds: Cmd[]): Result[] {
       case "SADD": a.forEach((v) => s.add(String(v))); m.s[k] = [...s]; dirty = true; return a.length;
       case "SREM": a.forEach((v) => s.delete(String(v))); m.s[k] = [...s]; dirty = true; return a.length;
       case "SMEMBERS": return [...s];
-      case "DEL": delete m.h[k]; delete m.s[k]; dirty = true; return 1;
+      case "DEL": delete m.h[k]; delete m.s[k]; delete m.l![k]; delete m.k![k]; dirty = true; return 1;
       default: throw new Error(`dev store: ${op} not supported`);
     }
   });

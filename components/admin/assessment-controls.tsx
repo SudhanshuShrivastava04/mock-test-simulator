@@ -46,7 +46,7 @@ export function CopyLink({ url, label = "Copy invite link" }: { url: string; lab
   );
 }
 
-export function FlagSwitch({ id, flag, checked, label, hint }: { id: string; flag: "releaseResults" | "archived"; checked: boolean; label: string; hint: string }) {
+export function FlagSwitch({ id, flag, checked, label, hint }: { id: string; flag: "releaseResults" | "archived" | "proctoring"; checked: boolean; label: string; hint: string }) {
   const [pending, start] = useTransition();
   return (
     <div className="flex items-start justify-between gap-4">

@@ -23,22 +23,6 @@ export function runner(): Promise<RunnerModule> {
   return mod;
 }
 
-const testCache = new Map<string, Promise<TestCase[]>>();
-/** All tests for a question, hidden ones included (fetched once, on the first Submit). */
-export function fullTests(assessmentId: string, qid: string): Promise<TestCase[]> {
-  const key = `${assessmentId}/${qid}`;
-  if (!testCache.has(key)) {
-    testCache.set(
-      key,
-      fetch(`/api/tests/${encodeURIComponent(assessmentId)}/${encodeURIComponent(qid)}`).then(async (r) => {
-        if (!r.ok) { testCache.delete(key); throw new Error((await r.json().catch(() => ({}))).error || "Couldn't load the tests."); }
-        return r.json();
-      }),
-    );
-  }
-  return testCache.get(key)!;
-}
-
 export async function runCode(q: PublicSet2Q, lang: string, code: string, tests: TestCase[], onStatus: (s: string) => void) {
   const R = await runner();
   const spec = q.coding!;

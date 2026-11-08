@@ -10,17 +10,38 @@ import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { buildPayload, fmtClock, freshState, hash, currentCode, loadState, saveState, touched, type ExamState } from "./state";
+import { buildPayload, currentCode, fmtClock, freshState, hash, loadState, saveState, touched, type ExamState } from "./state";
 import { Set1View } from "./set1-view";
 import { Set2View } from "./set2-view";
+import { ProctorMonitor, stopProctoring } from "./proctor";
 
 type Props = {
   paper: PublicPaper;
-  assessment: { id: string; title: string; durationMinutes: number };
+  assessment: { id: string; title: string; durationMinutes: number; proctoring: boolean };
   startedAt: number;
   serverNow: number;
   candidate: { name: string; email: string };
 };
+
+/** The only part that re-renders every second. */
+function Timer({ deadline, skew, onExpire }: { deadline: number; skew: number; onExpire: () => void }) {
+  const left = () => deadline - (Date.now() + skew);
+  const [ms, setMs] = useState(left);
+  const fired = useRef(false);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const m = left();
+      setMs(m);
+      if (m <= 0 && !fired.current) { fired.current = true; onExpire(); }
+    }, 1000);
+    return () => clearInterval(id);
+  });
+  return (
+    <div className={cn("flex items-center gap-1.5 font-mono text-base font-semibold tabular-nums sm:text-lg", ms < 5 * 60_000 && "text-destructive")} role="timer" aria-label="Time left">
+      <Clock className="size-4" />{fmtClock(ms)}
+    </div>
+  );
+}
 
 export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: Props) {
   // one saved state per attempt, so a retake starts clean
@@ -33,7 +54,7 @@ export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: 
 
   // debounced autosave, plus a final save when the page is hidden or closed
   useEffect(() => {
-    const t = setTimeout(() => saveState(key, S), 250);
+    const t = setTimeout(() => saveState(key, S), 400);
     return () => clearTimeout(t);
   }, [S, key]);
   useEffect(() => {
@@ -45,40 +66,33 @@ export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: 
   // the server's clock decides the deadline; correct for this device's clock drift
   const [skew] = useState(() => serverNow - Date.now());
   const deadline = startedAt + assessment.durationMinutes * 60_000;
-  const remaining = useCallback(() => deadline - (Date.now() + skew), [deadline, skew]);
-  const [left, setLeft] = useState(remaining);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
   const [done, setDone] = useState<{ submissionId?: string } | null>(null);
+  const busy = useRef(false);
 
   const doSubmit = useCallback(async (auto: boolean) => {
-    if (submitting || done) return;
+    if (busy.current) return;
+    busy.current = true;
     setSubmitting(true);
     setSubmitErr("");
     try {
       const r = await submitAttempt(assessment.id, buildPayload(latest.current, paper, auto));
       if ("error" in r && r.error) throw new Error(r.error);
       try { localStorage.removeItem(key); } catch {}
+      stopProctoring();
       setConfirmOpen(false);
       setDone({ submissionId: "submissionId" in r ? r.submissionId : undefined });
     } catch (e) {
+      busy.current = false;
       setSubmitErr(`${(e as Error).message || "Submission failed."} Your answers are still saved here. Check your connection and try again.`);
       setConfirmOpen(true);
     } finally {
       setSubmitting(false);
     }
-  }, [assessment.id, done, key, paper, submitting]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      const ms = remaining();
-      setLeft(ms);
-      if (ms <= 0) { clearInterval(id); void doSubmit(true); }
-    }, 1000);
-    return () => clearInterval(id);
-  }, [remaining, doSubmit]);
+  }, [assessment.id, key, paper]);
 
   useEffect(() => {
     const onVis = () => { if (document.hidden) update((s) => ({ ...s, tabSwitches: s.tabSwitches + 1 })); };
@@ -93,7 +107,7 @@ export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: 
           <CheckCircle2 className="mx-auto mb-4 size-12 text-success" />
           <h1 className="text-3xl font-semibold">Submitted</h1>
           <p className="mt-2 text-muted-foreground">Your answers are recorded. Your code and the solution links are on your dashboard now; scores appear once they&apos;re released.</p>
-          <div className="mt-6 flex justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             {done.submissionId && <Button asChild><Link href={`/dashboard/results/${done.submissionId}`}>See my answers</Link></Button>}
             <Button asChild variant="outline"><Link href="/dashboard">My tests</Link></Button>
           </div>
@@ -110,36 +124,39 @@ export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: 
     ["Set 2 attempted", `${paper.set2.filter((q) => touched(S, q)).length} / ${paper.set2.length}`],
     ["Coding questions submitted", `${coding.filter((q) => S.code[q.id]?.submit).length} / ${coding.length}`],
     ["Edited after last Submit", String(coding.filter((q) => { const c = S.code[q.id]; return c?.submit && c.submit.hash !== hash(currentCode(S, q)); }).length)],
-    ["Time left", fmtClock(left)],
   ];
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="z-20 flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-background px-4 py-2.5">
-        <div className="min-w-0">
-          <div className="truncate font-semibold">{assessment.title}</div>
-          <div className="text-xs text-muted-foreground">{candidate.name} · Set 1: {answered}/{paper.set1.length} answered</div>
+      <header className="z-20 flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-background px-3 py-2 sm:px-4">
+        <div className="min-w-0 flex-1 basis-40">
+          <div className="truncate text-sm font-semibold sm:text-base">{assessment.title}</div>
+          <div className="truncate text-xs text-muted-foreground">{candidate.name} · Set 1: {answered}/{paper.set1.length}</div>
         </div>
-        <div role="tablist" aria-label="Sets" className="ml-auto flex rounded-lg bg-muted p-1 max-sm:order-3 max-sm:ml-0">
+        <div role="tablist" aria-label="Sets" className="flex rounded-lg bg-muted p-1 max-sm:order-3 max-sm:w-full">
           {([1, 2] as const).map((n) => (
             <button key={n} role="tab" aria-selected={S.tab === n}
               onClick={() => update((s) => ({ ...s, tab: n }))}
-              className={cn("rounded-md px-4 py-1 text-sm font-medium text-muted-foreground", S.tab === n && "bg-background text-foreground shadow-sm")}>
+              className={cn("flex-1 rounded-md px-4 py-1 text-sm font-medium text-muted-foreground", S.tab === n && "bg-background text-foreground shadow-sm")}>
               Set {n}
             </button>
           ))}
         </div>
-        <div className={cn("flex items-center gap-1.5 font-mono text-lg font-semibold tabular-nums", left < 5 * 60_000 && "text-destructive")} aria-label="Time left">
-          <Clock className="size-4" />{fmtClock(left)}
-        </div>
-        <Button onClick={() => { setSubmitErr(""); setConfirmOpen(true); }}>Finish test</Button>
+        <Timer deadline={deadline} skew={skew} onExpire={() => void doSubmit(true)} />
+        <Button size="sm" onClick={() => { setSubmitErr(""); setConfirmOpen(true); }}>Finish<span className="max-sm:hidden">&nbsp;test</span></Button>
       </header>
 
-      <div className="min-h-0 flex-1">
-        {S.tab === 1
-          ? <Set1View paper={paper} S={S} update={update} onDone={() => update((s) => ({ ...s, tab: 2 }))} />
-          : <Set2View paper={paper} S={S} update={update} getState={getState} assessmentId={assessment.id} />}
+      {/* both sets stay mounted, so switching is instant and the editor keeps its state */}
+      <div className="relative min-h-0 flex-1">
+        <div className={cn("absolute inset-0", S.tab !== 1 && "hidden")}>
+          <Set1View paper={paper} S={S} update={update} active={S.tab === 1} onDone={() => update((s) => ({ ...s, tab: 2 }))} />
+        </div>
+        <div className={cn("absolute inset-0", S.tab !== 2 && "hidden")}>
+          <Set2View paper={paper} S={S} update={update} getState={getState} active={S.tab === 2} assessmentId={assessment.id} />
+        </div>
       </div>
+
+      {assessment.proctoring && <ProctorMonitor assessmentId={assessment.id} />}
 
       <AlertDialog open={confirmOpen} onOpenChange={(o) => !submitting && setConfirmOpen(o)}>
         <AlertDialogContent>

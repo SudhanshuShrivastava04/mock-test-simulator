@@ -46,9 +46,27 @@ async function List() {
   await requireAdmin();
   const [students, attempts, subs] = await Promise.all([listStudents(), allAttempts(), listSubmissions()]);
   if (!students.length) return <Empty icon={Users} title="No students yet">Add a Gmail address to let them sign in.</Empty>;
+  const count = (email: string) => ({ inv: attempts.filter((t) => t.email === email).length, subs: subs.filter((x) => x.email === email).length });
   return (
     <Card className="min-w-0">
-      <CardContent className="overflow-x-auto">
+      <CardContent>
+        <ul className="grid gap-2 md:hidden">
+          {students.map((s) => (
+            <li key={s.email} className="flex items-center gap-3 rounded-lg border p-3">
+              <Avatar className="size-8">
+                {s.image && <AvatarImage src={s.image} alt="" />}
+                <AvatarFallback>{(s.name || s.email).slice(0, 1).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{s.name || s.email.split("@")[0]}</div>
+                <div className="truncate text-xs text-muted-foreground">{s.email}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{count(s.email).inv} invites · {count(s.email).subs} submissions · {s.lastLoginAt ? `signed in ${fmtDate(s.lastLoginAt)}` : "never signed in"}</div>
+              </div>
+              <RemoveStudent email={s.email} />
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -82,6 +100,7 @@ async function List() {
             ))}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );

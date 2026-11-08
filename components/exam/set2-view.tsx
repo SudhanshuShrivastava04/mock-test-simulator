@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, HelpCircle, Loader2, Play, RotateCcw, SquareTerminal } from "lucide-react";
-import { fullTests, runCode, runner, type RunOutput } from "@/lib/runner-client";
+import { runCode, runner, type RunOutput } from "@/lib/runner-client";
 import type { PublicPaper, PublicSet2Q, TestCase } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { HowItWorks } from "@/components/how-it-works";
@@ -20,7 +20,7 @@ const DIALECT = { mysql: "MySQL", spark: "Spark SQL" } as const;
 type Res = { mode: "run" | "submit"; tests: TestCase[]; res?: RunOutput; error?: string; lang: string };
 const clip = (s: string, n = 400) => (s.length > n ? `${s.slice(0, n)}… (${(s.length - n).toLocaleString()} more characters)` : s);
 
-export function Set2View({ paper, S, update, getState, assessmentId }: { paper: PublicPaper; S: ExamState; update: (fn: (s: ExamState) => ExamState) => void; getState: () => ExamState; assessmentId: string }) {
+export function Set2View({ paper, S, update, getState, assessmentId, active }: { paper: PublicPaper; S: ExamState; update: (fn: (s: ExamState) => ExamState) => void; getState: () => ExamState; assessmentId: string; active: boolean }) {
   const qi = Math.min(S.q2, paper.set2.length - 1);
   const q = paper.set2[qi];
   const c = q.coding ? codeOf(S, q) : null;
@@ -28,13 +28,15 @@ export function Set2View({ paper, S, update, getState, assessmentId }: { paper: 
   const [sel, setSel] = useState<Record<string, number>>({});
   const [running, setRunning] = useState<string | null>(null);
   const [status, setStatus] = useState<{ text: string; busy?: boolean }>({ text: "" });
-  const [howto, setHowto] = useState(!S.seenHowto);
+  const [howtoOpen, setHowtoOpen] = useState(false);
+  const howto = howtoOpen || (active && !S.seenHowto); // shown once, the first time Set 2 is opened
+  const closeHowto = () => { setHowtoOpen(false); update((s) => ({ ...s, seenHowto: true })); };
 
   // warm the runtime for the current language in the background
   const ready = useRef<Record<string, boolean>>({});
   const warmKey = q.coding ? (isSQL(q) ? "sql" : c!.lang) : null;
   useEffect(() => {
-    if (!warmKey || ready.current[warmKey] || running) return;
+    if (!active || !warmKey || ready.current[warmKey] || running) return;
     let alive = true;
     const label = warmKey === "sql" ? "SQL engine" : LANG[warmKey as keyof typeof LANG];
     setStatus({ text: `Getting ${label} ready…`, busy: true });
@@ -43,7 +45,7 @@ export function Set2View({ paper, S, update, getState, assessmentId }: { paper: 
       .then(() => { ready.current[warmKey] = true; if (alive) setStatus({ text: `${label} ready` }); })
       .catch(() => alive && setStatus({ text: "Couldn't load the runner. Check your connection; Run will try again." }));
     return () => { alive = false; };
-  }, [warmKey, running]);
+  }, [active, warmKey, running]);
 
   const setCode = (v: string) => update((s) => {
     const cs = codeOf(s, q);
@@ -60,8 +62,18 @@ export function Set2View({ paper, S, update, getState, assessmentId }: { paper: 
     setStatus({ text: mode === "run" ? "Running the sample tests…" : "Running all tests…", busy: true });
     let tests: TestCase[] = cq.coding.tests;
     try {
-      if (mode === "submit") tests = await fullTests(assessmentId, cq.id);
-      const res = await runCode(cq, lang, code, tests, (t) => setStatus({ text: t, busy: true }));
+      let res: RunOutput;
+      if (mode === "submit") {
+        // Submit is graded on the server: hidden tests never reach this browser
+        setStatus({ text: "Grading on the server against every test…", busy: true });
+        const r = await fetch("/api/judge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assessmentId, qid: cq.id, lang, code }) });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || "The grading server didn't respond.");
+        tests = data.tests;
+        res = { results: data.results, compileError: data.compileError, ms: data.ms };
+      } else {
+        res = await runCode(cq, lang, code, tests, (t) => setStatus({ text: t, busy: true }));
+      }
       setResults((r) => ({ ...r, [cq.id]: { mode, res, tests, lang } }));
       const bad = res.results.findIndex((x) => x.status !== "pass");
       setSel((x) => ({ ...x, [cq.id]: bad >= 0 ? bad : 0 }));
@@ -108,7 +120,7 @@ export function Set2View({ paper, S, update, getState, assessmentId }: { paper: 
           );
         })}
         <span className="flex-1" />
-        <Button variant="outline" size="sm" onClick={() => setHowto(true)}><HelpCircle />How it works</Button>
+        <Button variant="outline" size="sm" onClick={() => setHowtoOpen(true)}><HelpCircle />How it works</Button>
       </nav>
 
       {/* side by side on wide screens; stacked and page-scrolling below 1024px */}
@@ -119,7 +131,7 @@ export function Set2View({ paper, S, update, getState, assessmentId }: { paper: 
 
         {q.coding && c ? (
           <section className="flex h-[760px] min-w-0 flex-col lg:h-auto lg:min-h-0">
-            <div className="flex flex-wrap items-center gap-2 border-b bg-background px-3 py-2">
+            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:static">
               <Select value={c.lang} onValueChange={(v) => update((s) => ({
                 ...s, lastLang: isSQL(q) ? s.lastLang : v,
                 code: { ...s.code, [q.id]: { ...codeOf(s, q), lang: v } },
@@ -161,11 +173,11 @@ export function Set2View({ paper, S, update, getState, assessmentId }: { paper: 
         )}
       </div>
 
-      <Dialog open={howto} onOpenChange={(o) => { setHowto(o); if (!o) update((s) => ({ ...s, seenHowto: true })); }}>
+      <Dialog open={howto} onOpenChange={(o) => (o ? setHowtoOpen(true) : closeHowto())}>
         <DialogContent className="sm:max-w-5xl">
           <DialogHeader><DialogTitle>How Set 2 coding works</DialogTitle></DialogHeader>
           <HowItWorks />
-          <DialogFooter><Button onClick={() => { setHowto(false); update((s) => ({ ...s, seenHowto: true })); }}>Got it</Button></DialogFooter>
+          <DialogFooter><Button onClick={closeHowto}>Got it</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
