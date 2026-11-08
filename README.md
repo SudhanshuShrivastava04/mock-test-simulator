@@ -1,69 +1,110 @@
-# CS Fundamentals & DSA Assessment
+# Mock Test Simulator
 
-- `/`           → the test link you send your brother
-- `/admin.html` → your results dashboard (password protected)
+Timed CS fundamentals + DSA/SQL mock tests with a built-in code runner, Google sign-in and two roles.
 
-## Try it locally first
+- **Admin (you):** create assessments, invite students by email, watch progress, grade Set 2, release results.
+- **Student:** signs in with Google, sees upcoming tests, takes them, and keeps a history of every attempt
+  with their code, the solution links and (once released) scores, correct answers and your notes.
 
-Needs Node.js 18 or newer (check with `node -v`). No npm install, no account, no database.
+Built with Next.js 16 (App Router, Server Components, Server Actions, Partial Prerendering), shadcn/ui,
+Auth.js (Google), Upstash Redis and nodemailer.
+
+## Run it locally
+
+Needs Node.js 20+.
 
 ```
-cd brother-test
+npm install
+cp .env.example .env.local      # then fill in what you have
 npm run dev
 ```
 
-- Test page: http://localhost:3000
-- Admin page: http://localhost:3000/admin.html (password: `admin`)
+Open http://localhost:3000. Without Upstash keys, data goes to `.data/dev-db.json`.
 
-Submissions are kept in memory and cleared when you stop the server (Ctrl+C).
-To use a different password: `ADMIN_PASSWORD=yourpass npm run dev` (Mac/Linux) or
-`set ADMIN_PASSWORD=yourpass && npm run dev` (Windows cmd).
+To try both roles without Google keys, put `AUTH_DEV_LOGIN=1` in `.env.development.local`. The sign-in
+page then shows a "sign in as any email" form. It never turns on in a production build.
+Any email listed in `ADMIN_EMAILS` signs in as admin; any email you've added as a student signs in as a student.
 
-## Deploy on Vercel (free, ~10 minutes)
+## Go live on Vercel
 
-1. **Put the code on GitHub.** Create a new *private* repo and upload this folder
-   (drag-and-drop on github.com works, or `git init && git add . && git commit -m init && git push`).
-   Keep it private: `lib/questions.js` contains the answer key.
-2. **Import into Vercel.** vercel.com → Add New → Project → pick the repo.
-   Framework preset: **Other**. Leave build settings empty. Click Deploy.
-3. **Add a free database.** In the project: Storage → Create Database → **Upstash for Redis** (free plan)
-   → connect it to this project. Vercel adds the database keys as environment variables automatically.
-4. **Set your admin password.** Settings → Environment Variables → add
-   `ADMIN_PASSWORD` = something only you know.
-5. **Redeploy** (Deployments → ⋯ → Redeploy) so the new variables take effect.
+1. **Google sign-in.** Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID →
+   Web application. Add the redirect URI `https://<your-domain>/api/auth/callback/google`
+   (and `http://localhost:3000/api/auth/callback/google` for local use). The consent screen can stay in
+   "Testing" if you add your students as test users, or publish it.
+2. **Environment variables** (Vercel → Project → Settings → Environment Variables):
+   - `AUTH_SECRET`: run `npx auth secret` or `openssl rand -base64 32`
+   - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`: from step 1
+   - `ADMIN_EMAILS`: your Google address (comma-separate several)
+   - `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`: optional, for invite emails. With Gmail, `SMTP_PASS` is an
+     [App Password](https://myaccount.google.com/apppasswords). Without these, invites are still created
+     and you share the link yourself ("Copy invite link").
+   - `KV_REST_API_URL`, `KV_REST_API_TOKEN`: already there from the Upstash integration.
+3. Push to `main`. Vercel builds and deploys it.
 
-Done. Send `https://<your-project>.vercel.app` to your brother and open
-`https://<your-project>.vercel.app/admin.html` yourself.
+## Where things are
 
-## Editing the test
+```
+app/
+  page.tsx                     landing page (static, prerendered)
+  login/                       Google sign-in (+ dev sign-in locally)
+  admin/                       overview, assessments, students, submissions, grading
+  admin/actions.ts             every admin mutation (Server Actions, each checks the admin role)
+  dashboard/                   student: upcoming tests, past attempts, results
+  test/[id]/                   start screen + the exam; test/actions.ts starts and submits attempts
+  api/tests/[assessmentId]/[qid]  full test cases for Submit (signed-in, started attempts only)
+components/exam/               exam workspace (client): Set 1 MCQs, Set 2 editor + runner output
+components/ui/                 shadcn/ui
+lib/
+  auth.ts, session.ts          Auth.js config; data access layer (role checked on every request)
+  data.ts, kv.ts               Redis records and the Upstash REST client (file store in dev)
+  papers/mock-01/              the question bank (Set 1 MCQs + answer key, Set 2 coding specs, tests)
+  mail.ts                      invite emails
+public/runner/                 in-browser runtimes: Python (Pyodide), C++ (Clang/WASI), Java (CheerpJ), SQL (DuckDB)
+proxy.ts                       bounces signed-out visitors to /login before rendering
+```
 
-Everything lives in `lib/questions.js`:
+## Data model (Redis)
 
-- `CONFIG` — title, duration, marks per MCQ, negative marking, and whether he sees his Set 1 score after submitting.
-- `SET1` — the 28 MCQs. `answer` is the index of the correct option (0 = A, 1 = B, …).
-- `SET2` — the 6 written questions. Fill in `title`, `link` and `prompt` for each, and adjust `marks`.
+| Key | What |
+|---|---|
+| `submissions` (hash) | one record per attempt. Same hash the first version used, so earlier attempts still show up |
+| `assessments` (hash) | scheduled sittings of a paper: window, duration, "results released" |
+| `students` (hash) | who may sign in as a student |
+| `attempts` (hash) | invite + progress per student per assessment (`startedAt` is the server's clock) |
+| `idx:*` (sets) | lookups by student / assessment, so pages never scan everything |
 
-Commit the change and Vercel redeploys on its own.
+Attempts made before sign-in existed have no email. Open one under **Submissions → Not linked**, enter the
+student's Gmail address, and it appears on their dashboard.
 
-## Set 2 coding questions
+## Architecture and scaling
 
-- Statements, starter code and the hidden test drivers are in `lib/set2.js`.
-- Test cases are generated: edit `tools/make-tests.mjs`, then run `node tools/make-tests.mjs`
-  to rewrite `lib/set2-tests.js` (expected outputs come from reference solutions in that script).
-- Code runs in the candidate's browser, so there's no server cost and no API key:
-  Python (Pyodide), C++17 (Clang compiled to WebAssembly), Java 8 (CheerpJ + `public/runner/java/tools.jar`),
-  SQL (DuckDB, accepting MySQL / Spark SQL style). The first run of each language downloads its runtime
-  (C++ is the largest, about 100 MB), then the browser caches it.
-- Run = sample tests, Submit = all tests (hidden ones included). The last Submit result is saved with the
-  answers. On the admin page, "Re-run tests here" runs the submitted code again in your browser.
-- Test inputs reach the browser (that's where the code runs), so hidden tests are hidden from view, not secret.
-- After editing anything in `lib/`, restart `npm run dev`; the local server caches those modules.
+- **Server-first rendering.** Dashboards, admin pages and results are Server Components; the browser gets
+  HTML, not data-fetching code. Each page is a prerendered static shell that the CDN serves instantly, with
+  the per-user part streamed in (Partial Prerendering). Client JavaScript is limited to small interactive
+  pieces (forms, menus) and the exam workspace, which loads lazily so CodeMirror never ships to other pages.
+- **Mutations are Server Actions.** Every one re-checks the caller's role on the server.
+- **Load balancing.** Vercel routes each request to the nearest edge and spreads server work across
+  automatically scaled serverless instances, so there's no load balancer to run. The app is built to fit
+  that model: no in-memory state on the server (sessions are signed cookies, data lives in Redis), and
+  Upstash is reached over HTTPS with batched pipelines, so any number of instances can serve traffic
+  without exhausting database connections.
+- **Code runs in the candidate's browser.** Running and grading code costs the server nothing, however many
+  students test at once. Runtime files are static assets cached at the edge and in the browser.
+- **Smaller exam payload.** The exam page ships only the sample tests; hidden tests (the bulk of the data)
+  load once, on the first Submit for each question.
+
+## Editing questions
+
+- `lib/papers/mock-01/questions.js`: config, the 28 MCQs (`answer` = index of the correct option) and the Set 2 list.
+- `lib/papers/mock-01/set2.js`: coding statements, starter code and hidden drivers.
+- Test cases are generated: edit `tools/make-tests.mjs`, then run `node tools/make-tests.mjs`.
+- To add another paper, create `lib/papers/<id>/` and register it in `lib/papers/index.ts`. It then
+  shows up in the "Question paper" picker when you create an assessment.
 
 ## Good to know
 
-- Set 1 is graded on the server, so the answer key never reaches his browser.
-- Set 2 is graded by you on the admin page (marks + optional note per answer).
-- His answers autosave in his browser, so a refresh or crash doesn't lose work.
-- The test auto-submits when time runs out, and tab/window switches are counted.
-- After submitting, that browser shows "Submitted" instead of the test. If you try the test
-  yourself first, use an incognito window, then delete your trial entry from the admin page.
+- Set 1 is graded on the server; the answer key never reaches the browser during a test.
+- Test inputs reach the browser (that's where the code runs), so hidden tests are hidden from view, not secret.
+- The timer is based on the server's start time. Closing the tab doesn't pause it, and the test submits
+  itself when time runs out. Tab switches are counted.
+- "Allow retake" on an invite lets a student sit the test again; the earlier attempt stays in their history.
