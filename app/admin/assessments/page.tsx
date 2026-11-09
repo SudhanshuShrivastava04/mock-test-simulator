@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { CalendarClock, ClipboardList, Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { attemptsForAssessment, listAssessments } from "@/lib/data";
-import { PAPERS } from "@/lib/papers";
+import { listPapers } from "@/lib/papers";
 import { fmtWindow, windowState } from "@/lib/status";
 import { createAssessment } from "@/app/admin/actions";
 import { AppMain, Empty, ListSkeleton, PageHeader } from "@/components/shared";
@@ -16,7 +16,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 
 export const metadata: Metadata = { title: "Assessments" };
 
-const papers = Object.values(PAPERS).map((p) => ({ id: p.id, title: p.config.title, duration: p.config.durationMinutes }));
 
 export default function AssessmentsPage() {
   return (
@@ -29,7 +28,9 @@ export default function AssessmentsPage() {
               <DialogTitle>New assessment</DialogTitle>
               <DialogDescription>You can invite students right after creating it.</DialogDescription>
             </DialogHeader>
-            <AssessmentForm action={createAssessment} papers={papers} submitLabel="Create assessment" />
+            <Suspense fallback={<ListSkeleton rows={3} />}>
+              <NewForm />
+            </Suspense>
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -38,6 +39,12 @@ export default function AssessmentsPage() {
       </Suspense>
     </AppMain>
   );
+}
+
+async function NewForm() {
+  await requireAdmin();
+  const papers = (await listPapers()).filter((p) => !p.archived).map((p) => ({ id: p.id, title: p.title, duration: p.durationMinutes }));
+  return <AssessmentForm action={createAssessment} papers={papers} submitLabel="Create assessment" />;
 }
 
 const WIN = {

@@ -21,7 +21,7 @@ export const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 let seeded = false;
 async function seed() {
   if (seeded) return;
-  const p = getPaper(DEFAULT_PAPER);
+  const p = await getPaper(DEFAULT_PAPER);
   const a: Assessment = {
     id: DEFAULT_PAPER,
     title: p.config.title,

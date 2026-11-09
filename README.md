@@ -128,7 +128,20 @@ running), and these are logged: leaving the tab, switching windows, a second mon
 The admin sees the location, a flag summary, the snapshots and a timeline on each submission. Evidence is kept 90 days
 and deleted with the submission. Proctored tests need a laptop or desktop (browsers on phones can't share the screen).
 
-## Editing questions
+## Writing question papers (admin → Papers)
+
+- **New paper** or **Duplicate** an existing one (the built-in paper is read-only; duplicate it to edit).
+- **Multiple choice:** topic, question, optional code snippet, 2–6 options, the correct one, an explanation.
+- **Coding:** title, statement, a function signature (types: int, long, double, bool, string, int[], long[],
+  double[], string[], int[][], ListNode) and test cases as JSON argument lists. Starter code and test drivers for
+  Python, Java and C++ are generated. Paste a reference solution: saving runs it on the judge to produce every
+  expected output. A small Python generator can add hidden edge-case and large tests. Tick "any order" when a
+  returned list may come back in any order.
+- **SQL:** tables, datasets as JSON rows, and a reference query that produces each dataset's expected output.
+- **Written:** a free-text question you grade by hand.
+- Pick the paper when you create an assessment. Editing a paper changes every assessment that uses it.
+
+## Editing the built-in paper in code
 
 - `lib/papers/mock-01/questions.js`: config, the 28 MCQs (`answer` = index of the correct option) and the Set 2 list.
 - `lib/papers/mock-01/set2.js`: coding statements, starter code and hidden drivers.

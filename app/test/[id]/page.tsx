@@ -68,7 +68,7 @@ async function Gate({ params }: { params: PageProps<"/test/[id]">["params"] }) {
     );
   }
 
-  const paper = getPaper(a.paperId);
+  const paper = await getPaper(a.paperId);
   if (t.startedAt) {
     const pub = publicPaper(paper);
     return (

@@ -9,7 +9,7 @@ import { addProctorEvent, getAssessment, getAttempt, getRuns, getSubmission, pro
 import { judgeDSA, judgeSQL } from "@/lib/judge";
 import { stepMarks } from "@/lib/scoring";
 import { hash } from "@/lib/hash";
-import { getPaper } from "@/lib/papers";
+import { getPaper, loadTests } from "@/lib/papers";
 import { GRACE_MS, windowState } from "@/lib/status";
 import type { Set2Answer, Submission } from "@/lib/types";
 
@@ -55,7 +55,7 @@ export async function submitAttempt(assessmentId: string, body: SubmitPayload) {
   if (t.submittedAt) return { ok: true as const, already: true };
   if (!t.startedAt) return { error: "This attempt hasn't started." };
 
-  const paper = getPaper(a.paperId);
+  const paper = await getPaper(a.paperId);
   const set1 = paper.gradeSet1(body?.answers || {});
   // test results come from the server's own record of each Submit, never from the browser
   const runs = await getRuns(a.id, v.email, t.startedAt);
@@ -100,7 +100,7 @@ export async function submitAttempt(assessmentId: string, body: SubmitPayload) {
 }
 
 async function gradeInBackground(submissionId: string, paperId: string) {
-  const paper = getPaper(paperId);
+  const paper = await getPaper(paperId);
   for (const id of (await getSubmission(submissionId))?.set2.filter((x) => x.grading).map((x) => x.id) || []) {
     const q = paper.set2.find((x) => x.id === id);
     const cur = await getSubmission(submissionId);
@@ -108,11 +108,12 @@ async function gradeInBackground(submissionId: string, paperId: string) {
     if (!cur || !ans || !q?.coding) continue;
     let patch: Partial<Set2Answer>;
     try {
+      const tests = await loadTests(paper, q.id);
       const r = q.coding.kind === "sql"
-        ? await judgeSQL(ans.answer, q.coding, q.coding.tests)
-        : await judgeDSA((ans.lang || "python") as "python" | "java" | "cpp", ans.answer, q.coding, q.coding.tests);
+        ? await judgeSQL(ans.answer, q.coding, tests)
+        : await judgeDSA((ans.lang || "python") as "python" | "java" | "cpp", ans.answer, q.coding, tests);
       const passed = r.compileError ? 0 : r.results.filter((x) => x.status === "pass").length;
-      const total = q.coding.tests.length;
+      const total = tests.length;
       patch = { grading: false, auto: true, marks: stepMarks(q.marks, passed, total, !!r.compileError), run: { passed, total, at: Date.now(), lang: ans.lang || null, stale: false } };
     } catch {
       patch = { grading: false }; // leave it for the admin (Re-run all tests on the submission page)

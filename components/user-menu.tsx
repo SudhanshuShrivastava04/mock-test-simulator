@@ -1,17 +1,13 @@
-import { LogOut, Monitor } from "lucide-react";
-import { signOut } from "@/lib/auth";
+import { Monitor } from "lucide-react";
+import { SignOutItem } from "@/components/sign-out-item";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function UserMenu({ name, email, image, role }: { name: string; email: string; image?: string; role: string }) {
-  async function logout() {
-    "use server";
-    await signOut({ redirectTo: "/" });
-  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="ml-auto flex items-center gap-2 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
@@ -32,11 +28,7 @@ export function UserMenu({ name, email, image, role }: { name: string; email: st
           <ThemeToggle />
         </div>
         <DropdownMenuSeparator />
-        <form action={logout}>
-          <DropdownMenuItem asChild>
-            <button type="submit" className="w-full"><LogOut />Sign out</button>
-          </DropdownMenuItem>
-        </form>
+        <SignOutItem />
       </DropdownMenuContent>
     </DropdownMenu>
   );

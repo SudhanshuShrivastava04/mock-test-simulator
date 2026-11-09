@@ -126,9 +126,22 @@ export async function judgeSQL(query: string, spec: CodingSpec, tests: TestCase[
     const results: Verdict[] = out.map((x, i) => {
       if (!x.ok) return { status: /^Time limit/.test(x.error) ? "tle" : "error", error: tidySQL(x.error) };
       const got = { columns: x.columns, rows: x.rows };
+      if (!tests[i].expected) return { status: "fail", got }; // no expected yet (computing it from a reference query)
       const why = compareTables(got, tests[i].expected as Table, spec.ordered);
       return { status: why ? "fail" : "pass", got, why };
     });
     return { results, ms: Date.now() - t0 };
+  });
+}
+
+/** Runs an author's Python test generator (no network) and returns what it prints. */
+export async function runGenerator(code: string): Promise<string> {
+  return withSandbox(async (sb) => {
+    await sb.writeFiles([{ path: "gen.py", content: Buffer.from(code) }]);
+    const r = await exec(sb, "bash", ["-lc", "timeout 30s python3 gen.py > out.txt 2> err.txt; echo $? > code.txt; head -c 8000000 out.txt"], 60_000);
+    const code2 = await exec(sb, "bash", ["-lc", "cat code.txt; tail -c 3000 err.txt"], 10_000);
+    const [exit, ...err] = code2.out.split("\n");
+    if (exit.trim() !== "0") throw new Error(exit.trim() === "124" ? "The generator ran longer than 30 s." : `The generator failed:\n${err.join("\n").trim()}`);
+    return r.out;
   });
 }

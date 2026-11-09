@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getViewer } from "@/lib/session";
 import { getAssessment, getAttempt, getSubmission, paperFor, saveRun, tryLock, unlock } from "@/lib/data";
-import { getPaper } from "@/lib/papers";
+import { getPaper, loadTests, type Paper } from "@/lib/papers";
 import { judgeDSA, judgeSQL, type JudgeResult } from "@/lib/judge";
 import { hash } from "@/lib/hash";
-import type { Set2Q } from "@/lib/types";
+import type { Set2Q, TestCase } from "@/lib/types";
 
 // Grades code against every test, hidden ones included, on the server. Students get verdicts only:
 // hidden inputs, expected outputs and their own output on hidden tests never leave the server.
@@ -17,18 +17,18 @@ const Body = z.union([
 ]);
 const DSA_LANGS = ["python", "java", "cpp"] as const;
 
-async function run(q: Set2Q, lang: string, code: string): Promise<JudgeResult> {
+async function run(q: Set2Q, tests: TestCase[], lang: string, code: string): Promise<JudgeResult> {
   const spec = q.coding!;
-  if (spec.kind === "sql") return judgeSQL(code, spec, spec.tests);
+  if (spec.kind === "sql") return judgeSQL(code, spec, tests);
   if (!(DSA_LANGS as readonly string[]).includes(lang)) throw new Error("Pick Python, Java or C++.");
-  return judgeDSA(lang as (typeof DSA_LANGS)[number], code, spec, spec.tests);
+  return judgeDSA(lang as (typeof DSA_LANGS)[number], code, spec, tests);
 }
 
 /** What a student may see: full detail on sample tests, a bare verdict on hidden ones. */
-function forStudent(q: Set2Q, r: JudgeResult) {
-  const tests = q.coding!.tests.map((t) => (t.sample ? { sample: true, show: t.show, expected: t.expected, data: t.data } : { sample: false }));
+function forStudent(all: TestCase[], r: JudgeResult) {
+  const tests = all.map((t) => (t.sample ? { sample: true, show: t.show, expected: t.expected, data: t.data } : { sample: false }));
   const results = r.results.map((v, i) => {
-    if (q.coding!.tests[i]?.sample) return v;
+    if (all[i]?.sample) return v;
     const error = v.status === "tle" ? "Time limit exceeded" : v.status === "error" ? (v.error || "Runtime error").split("\n")[0].slice(0, 200) : undefined;
     return { status: v.status, error };
   });
@@ -48,10 +48,12 @@ export async function POST(req: Request) {
       if (v.role !== "admin") return NextResponse.json({ error: "Admins only." }, { status: 403 });
       const sub = await getSubmission(b.submissionId);
       const ans = sub?.set2.find((a) => a.id === b.qid);
-      const q = sub && (await paperFor(sub.assessmentId)).set2.find((x) => x.id === b.qid);
-      if (!sub || !ans || !q?.coding) return NextResponse.json({ error: "Not found." }, { status: 404 });
-      const r = await run(q, ans.lang || "python", ans.answer);
-      return NextResponse.json({ ...r, total: q.coding.tests.length, samples: q.coding.tests.filter((t) => t.sample).length });
+      const paper: Paper | null = sub ? await paperFor(sub.assessmentId) : null;
+      const q = paper?.set2.find((x) => x.id === b.qid);
+      if (!sub || !ans || !paper || !q?.coding) return NextResponse.json({ error: "Not found." }, { status: 404 });
+      const tests = await loadTests(paper, q.id);
+      const r = await run(q, tests, ans.lang || "python", ans.answer);
+      return NextResponse.json({ ...r, total: tests.length, samples: tests.filter((t) => t.sample).length });
     }
 
     // ── student: Submit during an attempt ──
@@ -59,18 +61,20 @@ export async function POST(req: Request) {
     const [a, t] = await Promise.all([getAssessment(b.assessmentId), getAttempt(b.assessmentId, v.email)]);
     if (!a || !t?.startedAt || t.submittedAt) return NextResponse.json({ error: "This attempt isn't active." }, { status: 403 });
     if (Date.now() > t.startedAt + a.durationMinutes * 60_000 + 60_000) return NextResponse.json({ error: "Time is up." }, { status: 403 });
-    const q = getPaper(a.paperId).set2.find((x) => x.id === b.qid);
+    const paper = await getPaper(a.paperId);
+    const q = paper.set2.find((x) => x.id === b.qid);
     if (!q?.coding) return NextResponse.json({ error: "Not a coding question." }, { status: 404 });
 
     // one grading run at a time per student
     const lockKey = `judge:${a.id}:${v.email}`;
     if (!(await tryLock(lockKey, 90))) return NextResponse.json({ error: "Your previous Submit is still being graded." }, { status: 429 });
     try {
-      const r = await run(q, b.lang, b.code);
+      const tests = await loadTests(paper, q.id);
+      const r = await run(q, tests, b.lang, b.code);
       const passed = r.compileError ? 0 : r.results.filter((x) => x.status === "pass").length;
-      const total = q.coding.tests.length;
+      const total = tests.length;
       await saveRun(a.id, v.email, t.startedAt, q.id, { passed, total, at: Date.now(), lang: b.lang, hash: hash(b.code), compileError: !!r.compileError });
-      return NextResponse.json({ ...forStudent(q, r), passed, total });
+      return NextResponse.json({ ...forStudent(tests, r), passed, total });
     } finally {
       await unlock(lockKey);
     }

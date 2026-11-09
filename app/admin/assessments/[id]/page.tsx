@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { ArrowLeft, Inbox, MailCheck, MailWarning, MailX, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { attemptsForAssessment, getAssessment, listStudents, listSubmissions } from "@/lib/data";
-import { PAPERS } from "@/lib/papers";
+import { getPaper, listPapers } from "@/lib/papers";
 import { appUrl } from "@/lib/env";
 import { attemptState, fmtWindow } from "@/lib/status";
 import { updateAssessment } from "@/app/admin/actions";
@@ -21,7 +21,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 export const metadata: Metadata = { title: "Assessment" };
 
-const papers = Object.values(PAPERS).map((p) => ({ id: p.id, title: p.config.title, duration: p.config.durationMinutes }));
 
 export default function AssessmentPage({ params }: PageProps<"/admin/assessments/[id]">) {
   return (
@@ -42,14 +41,15 @@ async function Detail({ params }: { params: PageProps<"/admin/assessments/[id]">
   const { id } = await params;
   const a = await getAssessment(decodeURIComponent(id));
   if (!a) notFound();
-  const [roster, students, subs] = await Promise.all([attemptsForAssessment(a.id), listStudents(), listSubmissions()]);
+  const [roster, students, subs, paper, allPapers] = await Promise.all([attemptsForAssessment(a.id), listStudents(), listSubmissions(), getPaper(a.paperId), listPapers()]);
+  const papers = allPapers.filter((p) => !p.archived || p.id === a.paperId).map((p) => ({ id: p.id, title: p.title, duration: p.durationMinutes }));
   const names = Object.fromEntries(students.map((s) => [s.email, s.name]));
   const mySubs = subs.filter((s) => s.assessmentId === a.id);
   const link = `${appUrl()}/test/${encodeURIComponent(a.id)}`;
 
   return (
     <>
-      <PageHeader title={a.title} description={`${fmtWindow(a)} · ${a.durationMinutes} minutes · ${PAPERS[a.paperId]?.config.title || a.paperId}`}>
+      <PageHeader title={a.title} description={`${fmtWindow(a)} · ${a.durationMinutes} minutes · ${paper.config.title}`}>
         <CopyLink url={link} />
       </PageHeader>
 

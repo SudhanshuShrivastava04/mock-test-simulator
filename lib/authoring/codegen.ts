@@ -333,7 +333,7 @@ ${s.params.map((p) => `        ${p.name} = ${PY_READ[p.type]}`).join("\n")}
         print(f"\\n@@B {i}")
         try:
             r = Solution().${s.method}(${args})
-            print(f"\\n@@R {i} " + ${PY_CANON[s.returns]})
+            print(f"\\n@@R {i} " + (${PY_CANON[s.returns]}))
         except BaseException as e:
             print(f"\\n@@E {i} {_dr_fmt(e)}")
 _dr_main()

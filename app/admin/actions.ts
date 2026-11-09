@@ -9,7 +9,7 @@ import {
   deleteAttempt, deleteProctor, deleteSubmission, proctorBase, getAssessment, getAttempt, getStudent, getSubmission, isEmail,
   linkSubmission, normEmail, paperFor, removeStudent, saveAssessment, saveAttempt, saveStudent, saveSubmission,
 } from "@/lib/data";
-import { PAPERS } from "@/lib/papers";
+import { listPapers } from "@/lib/papers";
 import { sendInvite } from "@/lib/mail";
 import { appUrl } from "@/lib/env";
 import type { Assessment } from "@/lib/types";
@@ -24,26 +24,30 @@ const optTime = z.preprocess((v) => (v === "" || v == null ? null : Number(v)), 
 const AssessmentInput = z
   .object({
     title: z.string().trim().min(3, "Give it a title of at least 3 characters.").max(120),
-    paperId: z.string().refine((v) => v in PAPERS, "Pick a question paper."),
+    paperId: z.string().min(1, "Pick a question paper."),
     durationMinutes: z.coerce.number().int().min(5, "At least 5 minutes.").max(600, "At most 600 minutes."),
     opensAt: optTime,
     closesAt: optTime,
   })
   .refine((v) => !v.opensAt || !v.closesAt || v.closesAt > v.opensAt, "The closing time must be after the opening time.");
 
-function readAssessment(fd: FormData) {
-  return AssessmentInput.safeParse({
+async function readAssessment(fd: FormData) {
+  const r = AssessmentInput.safeParse({
     title: fd.get("title"),
     paperId: fd.get("paperId"),
     durationMinutes: fd.get("durationMinutes"),
     opensAt: fd.get("opensAt"),
     closesAt: fd.get("closesAt"),
   });
+  if (r.success && !(await listPapers()).some((p) => p.id === r.data.paperId)) {
+    return { success: false as const, error: { issues: [{ message: "Pick a question paper." }] } };
+  }
+  return r;
 }
 
 export async function createAssessment(_: FormState, fd: FormData): Promise<FormState> {
   const v = await requireAdmin();
-  const p = readAssessment(fd);
+  const p = await readAssessment(fd);
   if (!p.success) return { message: p.error.issues[0].message };
   const slug = p.data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "assessment";
   const a: Assessment = {
@@ -62,7 +66,7 @@ export async function updateAssessment(_: FormState, fd: FormData): Promise<Form
   await requireAdmin();
   const a = await getAssessment(String(fd.get("id")));
   if (!a) return { message: "That assessment no longer exists." };
-  const p = readAssessment(fd);
+  const p = await readAssessment(fd);
   if (!p.success) return { message: p.error.issues[0].message };
   await saveAssessment({ ...a, ...p.data });
   refresh();

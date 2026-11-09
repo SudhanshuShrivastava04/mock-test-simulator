@@ -8,14 +8,16 @@ import { Empty, fmtDate } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export function SubmissionsTable({
+export async function SubmissionsTable({
   subs, assessments, emptyIcon, showAssessment = true,
 }: { subs: Submission[]; assessments: Assessment[]; emptyIcon: React.ComponentType<{ className?: string }>; showAssessment?: boolean }) {
   if (!subs.length) return <Empty icon={emptyIcon} title="No submissions yet">Attempts show up here as soon as a student submits.</Empty>;
   const byId = Object.fromEntries(assessments.map((a) => [a.id, a]));
+  const paperIds = [...new Set(subs.map((s) => byId[s.assessmentId!]?.paperId || s.assessmentId!))];
+  const maxes = Object.fromEntries(await Promise.all(paperIds.map(async (id) => [id, set2Max(await getPaper(id))] as const)));
   const rows = subs.map((s) => {
     const a = byId[s.assessmentId!];
-    const max2 = set2Max(getPaper(a?.paperId));
+    const max2 = maxes[a?.paperId || s.assessmentId!] ?? 0;
     const s2 = set2Score(s);
     return { s, a, max2, s2, pending: s2.graded < s2.total };
   });

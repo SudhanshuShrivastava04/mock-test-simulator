@@ -4,6 +4,8 @@ export type Lang = "python" | "java" | "cpp";
 export type Dialect = "mysql" | "spark";
 
 export type TestCase = {
+  /** generated questions: the argument list as JSON (kept so the editor can show and edit it) */
+  args?: string;
   input?: string;
   expected: unknown;
   sample?: boolean;
@@ -21,6 +23,8 @@ export type CodingSpec = {
   unordered?: boolean;
   /** generated questions keep their signature so the editor can rebuild drivers */
   signature?: { method: string; params: { name: string; type: string }[]; returns: string };
+  /** stored papers keep only sample tests inline; this is the full count */
+  testCount?: number;
   ordered?: boolean;
   tables?: SqlTable[];
   starter: Record<Lang, string> | string;

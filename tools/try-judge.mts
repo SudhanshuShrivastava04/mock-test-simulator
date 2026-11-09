@@ -6,7 +6,7 @@ for (const f of [".env.local", ".env.development.local"]) for (const l of fs.rea
 }
 const { getPaper } = await import("@/lib/papers");
 const { judgeDSA, judgeSQL } = await import("@/lib/judge");
-const p = getPaper("mock-01");
+const p = await getPaper("mock-01");
 const q = (id: string) => p.set2.find((x) => x.id === id)!.coding!;
 const show = (name: string, r: { compileError?: string; results: { status: string; error?: string; why?: string }[]; ms: number }) =>
   console.log(name.padEnd(28), r.compileError ? "COMPILE: " + r.compileError.slice(0, 200) : `${r.results.filter((x) => x.status === "pass").length}/${r.results.length}  ${r.results.map((x) => x.status[0]).join("")}  ${r.ms} ms  ${r.results.find((x) => x.status !== "pass")?.error?.slice(0, 120) || ""}`);

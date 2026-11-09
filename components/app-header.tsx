@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 const ADMIN_NAV = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/assessments", label: "Assessments" },
+  { href: "/admin/papers", label: "Papers" },
   { href: "/admin/students", label: "Students" },
   { href: "/admin/submissions", label: "Submissions" },
 ];
