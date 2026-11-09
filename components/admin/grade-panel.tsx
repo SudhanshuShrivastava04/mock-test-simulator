@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ExternalLink, Play, Save } from "lucide-react";
 import { gradeSubmission } from "@/app/admin/actions";
 import { LANG_LABEL } from "@/lib/status";
+import { MARKING_RULE, stepMarks } from "@/lib/scoring";
 import type { PublicSet2Q, Set2Answer } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Q = PublicSet2Q & { link?: string };
 
-const suggest = (marks: number, passed: number, total: number) => Math.round(marks * (passed / total) * 2) / 2;
+const suggest = (marks: number, passed: number, total: number) => stepMarks(marks, passed, total);
 
 type RerunOut = { compileError?: string; results: { status: string; error?: string; why?: string }[]; ms: number; total: number; samples: number };
 
@@ -93,6 +94,8 @@ export function GradePanel({ submissionId, questions, answers }: { submissionId:
                   </Badge>
                 )}
                 {run?.stale && <span className="text-muted-foreground">code edited after that Submit</span>}
+                {a.auto && <Badge variant="outline" title={MARKING_RULE}>Auto-marked</Badge>}
+                {a.grading && <Badge className="border-0 bg-primary/10 text-primary">Grading final code…</Badge>}
                 {q.coding && !run && a.answer.trim() && <span className="text-muted-foreground">never pressed Submit</span>}
               </div>
             </CardHeader>
@@ -123,7 +126,7 @@ export function GradePanel({ submissionId, questions, answers }: { submissionId:
         <Button disabled={pending} onClick={() => start(async () => {
           try { await gradeSubmission(submissionId, grades); toast.success("Marks saved"); } catch (e) { toast.error((e as Error).message); }
         })}><Save />{pending ? "Saving…" : "Save Set 2 marks"}</Button>
-        <span className="text-xs text-muted-foreground">Students see marks and notes once you release results for the assessment.</span>
+        <span className="text-xs text-muted-foreground">Coding marks follow the rule: {MARKING_RULE}. Students see marks and notes once you release results.</span>
       </div>
     </div>
   );

@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Test" };
+// submitting can grade edited code in the background (up to 5 sandbox runs)
+export const maxDuration = 300;
 
 export default function TestPage({ params }: PageProps<"/test/[id]">) {
   return (

@@ -2,6 +2,7 @@ import "server-only";
 import { Sandbox } from "@vercel/sandbox";
 import type { CodingSpec, TestCase } from "@/lib/types";
 import { HARNESS_PY, PYRUN_PY, SQLRUN_PY } from "./harness";
+import { sameAnswer } from "@/lib/authoring/codegen";
 import { SQL_COMPAT, compareTables, setupSQL, splitStatements, tidySQL, toDuck, type Table } from "./sql";
 
 // Server-side judge. Hidden test cases never leave the server: the candidate's code is sent here,
@@ -55,11 +56,11 @@ function parseMarkers(text: string): Parsed {
 }
 
 type Raw = { status: "ok" | "crash" | "tle"; exit?: number; out: string; err: string; ms: number };
-function verdict(raw: Raw, expected: unknown, lang: string): Verdict {
+function verdict(raw: Raw, expected: unknown, lang: string, unordered?: boolean): Verdict {
   const p = parseMarkers(raw.out);
   const stdout = p.stdout.replace(/\n+$/, "");
   if (p.error) return { status: /^Time limit exceeded/.test(p.error) ? "tle" : "error", error: p.error, stdout };
-  if (p.done) return { status: p.got === expected ? "pass" : "fail", got: p.got, stdout };
+  if (p.done) return { status: p.got !== null && sameAnswer(p.got, String(expected), unordered) ? "pass" : "fail", got: p.got, stdout };
   if (raw.status === "tle") return { status: "tle", error: "Time limit exceeded", stdout };
   const sig = raw.exit !== undefined && raw.exit < 0 ? -raw.exit : 0;
   const tail = raw.err.trim().split("\n").filter(Boolean).slice(-3).join("\n");
@@ -103,7 +104,7 @@ export async function judgeDSA(lang: "python" | "java" | "cpp", code: string, sp
     let res: { compileError: string; results: Raw[] };
     try { res = JSON.parse(r.out); } catch { throw new Error("The grading server returned an unexpected response."); }
     if (res.compileError) return { compileError: tidyCompile(lang, res.compileError), results: [], ms: Date.now() - t0 };
-    return { results: res.results.map((raw, i) => verdict(raw, tests[i].expected, lang)), ms: Date.now() - t0 };
+    return { results: res.results.map((raw, i) => verdict(raw, tests[i].expected, lang, spec.unordered)), ms: Date.now() - t0 };
   });
 }
 

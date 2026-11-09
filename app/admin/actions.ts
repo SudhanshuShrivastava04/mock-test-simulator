@@ -193,7 +193,8 @@ export async function gradeSubmission(id: string, grades: Record<string, { marks
     let m = g.marks === "" || g.marks == null ? null : Number(g.marks);
     if (m !== null && (Number.isNaN(m) || m < 0)) m = 0;
     if (m !== null && m > max) m = max;
-    return { ...a, marks: m, note: String(g.note || "").slice(0, 2000) };
+    // an admin change takes over from the automatic mark
+    return { ...a, marks: m, note: String(g.note || "").slice(0, 2000), auto: a.auto && m === a.marks };
   });
   await saveSubmission(sub);
   refresh();

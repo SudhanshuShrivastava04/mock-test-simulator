@@ -15,7 +15,12 @@ export type SqlTable = { name: string; columns: { name: string; type: string }[]
 
 export type CodingSpec = {
   kind: "dsa" | "sql";
-  output?: "int" | "list" | "string";
+  /** "raw": expected values are already canonical text (generated questions) */
+  output?: "int" | "list" | "string" | "raw";
+  /** a top-level list answer may come back in any order */
+  unordered?: boolean;
+  /** generated questions keep their signature so the editor can rebuild drivers */
+  signature?: { method: string; params: { name: string; type: string }[]; returns: string };
   ordered?: boolean;
   tables?: SqlTable[];
   starter: Record<Lang, string> | string;
@@ -102,6 +107,10 @@ export type Set2Answer = {
   note: string;
   lang?: string | null;
   run?: { passed: number; total: number; at: number | null; lang: string | null; stale: boolean } | null;
+  /** marks were set automatically from the server's test results (an admin edit clears it) */
+  auto?: boolean;
+  /** the final code is being graded in the background after submission */
+  grading?: boolean;
 };
 
 export type Submission = {

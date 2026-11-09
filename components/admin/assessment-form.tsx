@@ -34,7 +34,7 @@ export function AssessmentForm({
   const paper = papers.find((p) => p.id === paperId);
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={formAction} className="@container grid gap-4">
       {initial && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="paperId" value={paperId} />
       <input type="hidden" name="opensAt" value={fromLocal(opens)} />
@@ -43,11 +43,11 @@ export function AssessmentForm({
         <Label htmlFor="title">Title</Label>
         <Input id="title" name="title" required minLength={3} maxLength={120} defaultValue={initial?.title || paper?.title} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
+      <div className="grid gap-4 @md:grid-cols-2">
+        <div className="grid min-w-0 gap-2">
           <Label>Question paper</Label>
           <Select value={paperId} onValueChange={setPaperId}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
             <SelectContent>
               {papers.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
             </SelectContent>
