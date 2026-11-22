@@ -12,12 +12,21 @@ import { Button } from "@/components/ui/button";
 type Geo = { lat: number; lon: number; acc: number };
 const P: { cam: MediaStream | null; screen: MediaStream | null; geo: Geo | null; v: number } = { cam: null, screen: null, geo: null, v: 0 };
 const subs = new Set<() => void>();
-const emit = () => { P.v++; subs.forEach((f) => f()); };
 const live = (s: MediaStream | null) => !!s && s.getTracks().length > 0 && s.getTracks().every((t) => t.readyState === "live");
 
-export function useProctorState() {
-  useSyncExternalStore((f) => { subs.add(f); return () => subs.delete(f); }, () => P.v, () => 0);
-  return { camOk: live(P.cam), screenOk: live(P.screen), geo: P.geo, cam: P.cam, screen: P.screen };
+// React reads an immutable snapshot that is replaced on every change. (Reading the mutable `P`
+// during render would let the React Compiler cache stale values, and "Allow" would never update.)
+type Snap = { camOk: boolean; screenOk: boolean; geo: Geo | null; cam: MediaStream | null; screen: MediaStream | null };
+const EMPTY: Snap = { camOk: false, screenOk: false, geo: null, cam: null, screen: null };
+let snap: Snap = EMPTY;
+const emit = () => {
+  P.v++;
+  snap = { camOk: live(P.cam), screenOk: live(P.screen), geo: P.geo, cam: P.cam, screen: P.screen };
+  subs.forEach((f) => f());
+};
+
+export function useProctorState(): Snap {
+  return useSyncExternalStore((f) => { subs.add(f); return () => subs.delete(f); }, () => snap, () => EMPTY);
 }
 
 export const proctorSupported = () =>
