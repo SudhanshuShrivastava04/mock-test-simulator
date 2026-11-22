@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { generateTests, saveDsa, saveMeta, saveSql, saveWritten } from "@/app/admin/papers/actions";
-import { PARAM_TYPES, TYPE_HELP, starters, type ParamType, type Signature } from "@/lib/authoring/codegen";
+import { PARAM_TYPES, RETURN_TYPES, TYPE_HELP, starters, type ParamType, type ReturnType, type Signature } from "@/lib/authoring/codegen";
 import type { SqlTable } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Prose, DataTable } from "@/components/exam/problem";
@@ -116,11 +116,11 @@ tests.append([[random.randint(0, 10**4) for _ in range(10**4)]])
 print(json.dumps(tests))
 `;
 
-function TypeSel({ value, onChange, disabled }: { value: ParamType; onChange: (t: ParamType) => void; disabled: boolean }) {
+function TypeSel({ value, onChange, disabled, ret }: { value: ReturnType; onChange: (t: ParamType) => void; disabled: boolean; ret?: boolean }) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ParamType)} disabled={disabled}>
       <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-      <SelectContent>{PARAM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+      <SelectContent>{(ret ? RETURN_TYPES : PARAM_TYPES).map((t) => <SelectItem key={t} value={t}>{t === "void" ? "void (modify a list in place)" : t}</SelectItem>)}</SelectContent>
     </Select>
   );
 }
@@ -146,7 +146,7 @@ function SignatureCard({ sig, setSig, unordered, setUnordered, locked }: { sig: 
             </div>
           ))}
           {!locked && sig.params.length < 6 && <Button variant="outline" size="sm" className="justify-self-start" onClick={() => setSig({ ...sig, params: [...sig.params, { name: `arg${sig.params.length + 1}`, type: "int" }] })}><Plus />Add parameter</Button>}
-          <div className="flex items-center gap-3"><Label className="w-20">Returns</Label><TypeSel disabled={locked} value={sig.returns} onChange={(t) => setSig({ ...sig, returns: t })} /></div>
+          <div className="flex items-center gap-3"><Label className="w-20">Returns</Label><TypeSel ret disabled={locked} value={sig.returns} onChange={(t) => setSig({ ...sig, returns: t })} /></div>
           <label className="flex items-center gap-2 text-sm"><Switch checked={unordered} onCheckedChange={setUnordered} disabled={locked} />A returned list may be in any order</label>
           {locked && <p className="text-xs text-muted-foreground">The signature is fixed once a question is saved, so existing student code keeps working. Create a new question to change it.</p>}
         </div>

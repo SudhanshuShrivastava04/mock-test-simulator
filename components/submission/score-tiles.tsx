@@ -2,9 +2,9 @@ import type { Set1Result } from "@/lib/types";
 
 export function ScoreTiles({ set1, s2, max2, hideSet2 }: { set1: Set1Result; s2: { score: number; graded: number; total: number }; max2: number; hideSet2?: boolean }) {
   const pending = s2.graded < s2.total;
-  const tiles: [string, string, string?][] = [["Set 1", `${set1.score}/${set1.max}`]];
+  const tiles: [string, string, string?][] = set1.max > 0 ? [["Set 1", `${set1.score}/${set1.max}`]] : [];
   if (!hideSet2) {
-    tiles.push(["Set 2", `${s2.score}/${max2}`, pending ? `${s2.total - s2.graded} to grade` : undefined]);
+    tiles.push([set1.max > 0 ? "Set 2" : "Coding", `${+s2.score.toFixed(2)}/${max2}`, pending ? `${s2.total - s2.graded} to grade` : undefined]);
     tiles.push(["Total", `${+(set1.score + s2.score).toFixed(2)}/${set1.max + max2}`, pending ? "so far" : undefined]);
   }
   return (

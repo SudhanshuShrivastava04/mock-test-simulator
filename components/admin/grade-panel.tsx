@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ExternalLink, Play, Save } from "lucide-react";
 import { gradeSubmission } from "@/app/admin/actions";
 import { LANG_LABEL } from "@/lib/status";
-import { MARKING_RULE, stepMarks } from "@/lib/scoring";
+import { codingMarks, ruleText } from "@/lib/scoring";
 import type { PublicSet2Q, Set2Answer } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Q = PublicSet2Q & { link?: string };
 
-const suggest = (marks: number, passed: number, total: number) => stepMarks(marks, passed, total);
+const suggest = (q: Q, passed: number, total: number) => codingMarks(q.marks, passed, total, false, q.coding?.marking);
 
 type RerunOut = { compileError?: string; results: { status: string; error?: string; why?: string }[]; ms: number; total: number; samples: number };
 
@@ -32,7 +32,7 @@ function Rerun({ submissionId, q, onScore }: { submissionId: string; q: Q; onSco
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || "Grading failed.");
       setOut(data);
-      if (!data.compileError) onScore(suggest(q.marks, data.results.filter((x: { status: string }) => x.status === "pass").length, data.total));
+      if (!data.compileError) onScore(suggest(q, data.results.filter((x: { status: string }) => x.status === "pass").length, data.total));
     } catch (e) { setErr((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -77,7 +77,7 @@ export function GradePanel({ submissionId, questions, answers }: { submissionId:
       {questions.map((q, i) => {
         const a = byId[q.id] || { id: q.id, answer: "", marks: null, note: "" };
         const run = a.run;
-        const suggested = hints[q.id] ?? (run && !run.stale && run.lang === a.lang ? suggest(q.marks, run.passed, run.total) : undefined);
+        const suggested = hints[q.id] ?? (run && !run.stale && run.lang === a.lang ? suggest(q, run.passed, run.total) : undefined);
         return (
           <Card key={q.id}>
             <CardHeader>
@@ -94,7 +94,7 @@ export function GradePanel({ submissionId, questions, answers }: { submissionId:
                   </Badge>
                 )}
                 {run?.stale && <span className="text-muted-foreground">code edited after that Submit</span>}
-                {a.auto && <Badge variant="outline" title={MARKING_RULE}>Auto-marked</Badge>}
+                {a.auto && <Badge variant="outline" title={ruleText(q.coding?.marking)}>Auto-marked</Badge>}
                 {a.grading && <Badge className="border-0 bg-primary/10 text-primary">Grading final code…</Badge>}
                 {q.coding && !run && a.answer.trim() && <span className="text-muted-foreground">never pressed Submit</span>}
               </div>
@@ -126,7 +126,7 @@ export function GradePanel({ submissionId, questions, answers }: { submissionId:
         <Button disabled={pending} onClick={() => start(async () => {
           try { await gradeSubmission(submissionId, grades); toast.success("Marks saved"); } catch (e) { toast.error((e as Error).message); }
         })}><Save />{pending ? "Saving…" : "Save Set 2 marks"}</Button>
-        <span className="text-xs text-muted-foreground">Coding marks follow the rule: {MARKING_RULE}. Students see marks and notes once you release results.</span>
+        <span className="text-xs text-muted-foreground">Coding marks are filled in automatically from the server&apos;s test results. Students see marks and notes once you release results.</span>
       </div>
     </div>
   );

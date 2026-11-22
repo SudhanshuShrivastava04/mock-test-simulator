@@ -5,7 +5,7 @@ import fs from "node:fs";
 for (const f of [".env.local", ".env.development.local"]) for (const l of fs.readFileSync(f, "utf8").split("\n")) {
   const m = l.match(/^([A-Z_]+)=(.*)$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, "");
 }
-const { buildDsaSpec, encodeArgs, canon, checkSignature } = await import("@/lib/authoring/codegen");
+const { buildDsaSpec, encodeArgs, canon, checkSignature, outputType } = await import("@/lib/authoring/codegen");
 const { judgeDSA } = await import("@/lib/judge");
 type Sig = Parameters<typeof buildDsaSpec>[0];
 
@@ -154,7 +154,7 @@ for (const c of cases) {
   const err = checkSignature(c.sig);
   if (err) { console.log("BAD SIGNATURE", err); failures++; continue; }
   const spec = { ...buildDsaSpec(c.sig, !!c.unordered), tests: [] as never[] };
-  const tests = c.args.map((a) => ({ input: encodeArgs(c.sig, a), expected: canon(c.sig.returns, (c.js as (...x: unknown[]) => unknown)(...a)) }));
+  const tests = c.args.map((a) => ({ input: encodeArgs(c.sig, a), expected: canon(outputType(c.sig), (c.js as (...x: unknown[]) => unknown)(...a)) }));
   const runs = await Promise.all((["python", "java", "cpp"] as const).map((lang) => judgeDSA(lang, c[lang === "python" ? "py" : lang], spec, tests).then((r) => [lang, r] as const)));
   for (const [lang, r] of runs) {
     const ok = !r.compileError && r.results.every((x) => x.status === "pass");

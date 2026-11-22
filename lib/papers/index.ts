@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import * as mock01 from "./mock-01/questions.js";
+import * as sqlDsa2 from "./sql-dsa-2/paper";
 import { cmd, parse, values } from "@/lib/kv";
 import type { Mcq, PaperConfig, PublicPaper, Set1Result, Set2Q, TestCase } from "@/lib/types";
 
@@ -45,6 +46,14 @@ const BUILTIN: Record<string, Paper> = {
     set1: mock01.SET1 as Mcq[],
     set2: mock01.SET2 as Set2Q[],
     gradeSet1: mock01.gradeSet1 as Paper["gradeSet1"],
+    builtin: true,
+  },
+  "sql-dsa-2": {
+    id: "sql-dsa-2",
+    config: sqlDsa2.CONFIG,
+    set1: [],
+    set2: sqlDsa2.SET2,
+    gradeSet1: (answers) => grader([], 1, 0)(answers),
     builtin: true,
   },
 };

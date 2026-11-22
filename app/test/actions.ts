@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { requireStudent } from "@/lib/session";
 import { addProctorEvent, getAssessment, getAttempt, getRuns, getSubmission, proctorBase, saveAttempt, saveSubmission } from "@/lib/data";
 import { judgeDSA, judgeSQL } from "@/lib/judge";
-import { stepMarks } from "@/lib/scoring";
+import { codingMarks } from "@/lib/scoring";
 import { hash } from "@/lib/hash";
 import { getPaper, loadTests } from "@/lib/papers";
 import { GRACE_MS, windowState } from "@/lib/status";
@@ -68,7 +68,7 @@ export async function submitAttempt(assessmentId: string, body: SubmitPayload) {
       ans.run = r ? { passed: r.passed, total: r.total, at: r.at, lang: r.lang, stale: r.hash !== hash(ans.answer) || r.lang !== ans.lang } : null;
       // marks come straight from the server-verified run; edited-after-Submit code is regraded below
       if (!ans.answer.trim()) { ans.marks = 0; ans.auto = true; }
-      else if (r && !ans.run!.stale) { ans.marks = stepMarks(q.marks, r.passed, r.total, r.compileError); ans.auto = true; }
+      else if (r && !ans.run!.stale) { ans.marks = codingMarks(q.marks, r.passed, r.total, r.compileError, q.coding.marking); ans.auto = true; }
       else ans.grading = true;
     }
     return ans;
@@ -114,7 +114,7 @@ async function gradeInBackground(submissionId: string, paperId: string) {
         : await judgeDSA((ans.lang || "python") as "python" | "java" | "cpp", ans.answer, q.coding, tests);
       const passed = r.compileError ? 0 : r.results.filter((x) => x.status === "pass").length;
       const total = tests.length;
-      patch = { grading: false, auto: true, marks: stepMarks(q.marks, passed, total, !!r.compileError), run: { passed, total, at: Date.now(), lang: ans.lang || null, stale: false } };
+      patch = { grading: false, auto: true, marks: codingMarks(q.marks, passed, total, !!r.compileError, q.coding.marking), run: { passed, total, at: Date.now(), lang: ans.lang || null, stale: false } };
     } catch {
       patch = { grading: false }; // leave it for the admin (Re-run all tests on the submission page)
     }

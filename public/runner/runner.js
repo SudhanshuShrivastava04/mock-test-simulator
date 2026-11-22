@@ -117,14 +117,23 @@ function parseMarkers(text, n) {
 }
 
 // matches lib/authoring/codegen.ts sameAnswer: with `unordered`, a top-level list may come back in any order
-function same(got, exp, unordered) {
+function close(a, b) {
+  if (typeof a === "number" && typeof b === "number") return Math.abs(a - b) <= 1e-5 * Math.max(1, Math.abs(b));
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => close(x, b[i]));
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+function same(got, exp, unordered, approx) {
   if (got === exp) return true;
-  if (!unordered) return false;
+  if (!unordered && !approx) return false;
   try {
-    const a = JSON.parse(got), b = JSON.parse(exp);
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-    const sa = a.map((x) => JSON.stringify(x)).sort(), sb = b.map((x) => JSON.stringify(x)).sort();
-    return sa.every((x, i) => x === sb[i]);
+    let a = JSON.parse(got), b = JSON.parse(exp);
+    if (unordered) {
+      if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+      const key = (x) => JSON.stringify(x);
+      a = [...a].sort((x, y) => (key(x) < key(y) ? -1 : 1));
+      b = [...b].sort((x, y) => (key(x) < key(y) ? -1 : 1));
+    }
+    return approx ? close(a, b) : JSON.stringify(a) === JSON.stringify(b);
   } catch { return false; }
 }
 
@@ -133,7 +142,7 @@ function finish(parsed, tests, extra = {}) {
     const p = parsed[i] || {};
     const stdout = (p.stdout || "").replace(/\n+$/, "");
     if (p.error) return { status: /^Time limit exceeded/.test(p.error) ? "tle" : "error", error: p.error, stdout };
-    if (p.done) return { status: same(p.got, t.expected, extra.unordered) ? "pass" : "fail", got: p.got, stdout };
+    if (p.done) return { status: same(p.got, t.expected, extra.unordered, extra.approx) ? "pass" : "fail", got: p.got, stdout };
     if (p.started && extra.tleAt === i) return { status: "tle", error: "Time limit exceeded", stdout };
     if (p.started && extra.crash) return { status: "error", error: extra.crash, stdout };
     if (extra.tleAt !== undefined && i > extra.tleAt) return { status: "skipped", error: "Not run (an earlier test timed out)" };
@@ -262,13 +271,13 @@ async function runPython(code, spec, tests, onStatus) {
       if (tleAt < 0) tleAt = parsed.findIndex((p) => !p.done);
       py.fail(new Timeout());
       delete warmed.python;
-      resolve({ results: finish(parsed, tests, { tleAt, unordered: spec.unordered }) });
+      resolve({ results: finish(parsed, tests, { tleAt, unordered: spec.unordered, approx: spec.approx }) });
     });
     py.online = (line) => { text += line + "\n"; if (/^@@[RE] /.test(line)) dog.reset(LIMIT.python); };
     py.call({ cmd: "run", input: buildInput(tests), ...src }).then((r) => {
       dog.stop();
       if (r.compileError) return resolve({ compileError: r.compileError, results: [] });
-      resolve({ results: finish(parseMarkers(text, tests.length), tests, { unordered: spec.unordered }) });
+      resolve({ results: finish(parseMarkers(text, tests.length), tests, { unordered: spec.unordered, approx: spec.approx }) });
     }, (e) => { dog.stop(); if (!(e instanceof Timeout)) reject(e); });
   });
 }
@@ -296,7 +305,7 @@ async function runCpp(code, spec, tests, onStatus) {
       await cx.call({ cmd: "load", wasm: c.wasm });
       continue;
     }
-    results.push(finish(parseMarkers(r.out, 1), [t], { crash: r.crash, unordered: spec.unordered })[0]);
+    results.push(finish(parseMarkers(r.out, 1), [t], { crash: r.crash, unordered: spec.unordered, approx: spec.approx })[0]);
   }
   return { results };
 }
@@ -320,11 +329,11 @@ async function runJava(code, spec, tests, onStatus) {
     let tleAt = parsed.findIndex((p) => p.started && !p.done);
     if (tleAt < 0) tleAt = parsed.findIndex((p) => !p.done);
     javaReset(); delete warmed.java;
-    return { results: finish(parsed, tests, { tleAt: Math.max(0, tleAt), unordered: spec.unordered }) };
+    return { results: finish(parsed, tests, { tleAt: Math.max(0, tleAt), unordered: spec.unordered, approx: spec.approx }) };
   }
   if (r.compileError) return { compileError: tidyJavac(r.compileError), results: [] };
   const crash = r.exit ? `Program exited with code ${r.exit}` : "";
-  return { results: finish(parseMarkers(r.out, tests.length), tests, { crash, unordered: spec.unordered }) };
+  return { results: finish(parseMarkers(r.out, tests.length), tests, { crash, unordered: spec.unordered, approx: spec.approx }) };
 }
 
 function tidyJavac(log) {

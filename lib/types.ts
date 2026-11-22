@@ -21,8 +21,12 @@ export type CodingSpec = {
   output?: "int" | "list" | "string" | "raw";
   /** a top-level list answer may come back in any order */
   unordered?: boolean;
+  /** numeric answers match within 1e-5 */
+  approx?: boolean;
+  /** "perTest": marks = tests passed × (marks ÷ tests). Default: step rule. */
+  marking?: "steps" | "perTest";
   /** generated questions keep their signature so the editor can rebuild drivers */
-  signature?: { method: string; params: { name: string; type: string }[]; returns: string };
+  signature?: { method: string; params: { name: string; type: string }[]; returns: string; inplace?: string };
   /** stored papers keep only sample tests inline; this is the full count */
   testCount?: number;
   ordered?: boolean;

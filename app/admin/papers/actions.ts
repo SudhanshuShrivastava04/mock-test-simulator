@@ -8,7 +8,7 @@ import {
   deleteQuestionData, getPaper, getStoredPaper, loadReference, loadTests, saveReference, saveStoredPaper, saveTests,
   type Reference, type StoredPaper,
 } from "@/lib/papers";
-import { buildDsaSpec, canon, checkSignature, checkValue, encodeArgs, showArgs, type ParamType, type Signature } from "@/lib/authoring/codegen";
+import { buildDsaSpec, canon, checkSignature, checkValue, encodeArgs, outputType, showArgs, type Signature } from "@/lib/authoring/codegen";
 import { judgeDSA, judgeSQL, runGenerator } from "@/lib/judge";
 import type { Mcq, Set2Q, SqlTable, TestCase } from "@/lib/types";
 
@@ -187,9 +187,9 @@ export async function saveDsa(paperId: string, d: DsaDraft): Promise<Result<{ id
       if (m === null) continue;
       let v: unknown;
       try { v = JSON.parse(m); } catch { return { ok: false, error: `Test ${i + 1}: the expected value isn't valid JSON.` }; }
-      const err = checkValue(d.signature.returns as ParamType, v, `Test ${i + 1}, expected`);
+      const err = checkValue(outputType(d.signature), v, `Test ${i + 1}, expected`);
       if (err) return { ok: false, error: err };
-      tests[i].expected = canon(d.signature.returns, v);
+      tests[i].expected = canon(outputType(d.signature), v);
     }
     if (manual.some((m) => m === null)) {
       if (!d.reference.code.trim()) return { ok: false, error: "Add a reference solution (or fill in every expected value)." };

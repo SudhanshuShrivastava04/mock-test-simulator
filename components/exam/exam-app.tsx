@@ -117,11 +117,12 @@ export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: 
   }
 
   const answered = paper.set1.filter((q) => Number.isInteger(S.answers[q.id])).length;
+  const hasSet1 = paper.set1.length > 0;
+  const tab = hasSet1 ? S.tab : 2;
   const coding = paper.set2.filter((q) => q.coding);
   const summary: [string, string][] = [
-    ["Set 1 answered", `${answered} / ${paper.set1.length}`],
-    ["Set 1 marked for review", String(Object.values(S.flags).filter(Boolean).length)],
-    ["Set 2 attempted", `${paper.set2.filter((q) => touched(S, q)).length} / ${paper.set2.length}`],
+    ...(hasSet1 ? [["Set 1 answered", `${answered} / ${paper.set1.length}`], ["Set 1 marked for review", String(Object.values(S.flags).filter(Boolean).length)]] as [string, string][] : []),
+    [hasSet1 ? "Set 2 attempted" : "Questions attempted", `${paper.set2.filter((q) => touched(S, q)).length} / ${paper.set2.length}`],
     ["Coding questions submitted", `${coding.filter((q) => S.code[q.id]?.submit).length} / ${coding.length}`],
     ["Edited after last Submit", String(coding.filter((q) => { const c = S.code[q.id]; return c?.submit && c.submit.hash !== hash(currentCode(S, q)); }).length)],
   ];
@@ -131,9 +132,9 @@ export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: 
       <header className="z-20 flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-background px-3 py-2 sm:px-4">
         <div className="min-w-0 flex-1 basis-40">
           <div className="truncate text-sm font-semibold sm:text-base">{assessment.title}</div>
-          <div className="truncate text-xs text-muted-foreground">{candidate.name} · Set 1: {answered}/{paper.set1.length}</div>
+          <div className="truncate text-xs text-muted-foreground">{candidate.name}{hasSet1 ? ` · Set 1: ${answered}/${paper.set1.length}` : ""}</div>
         </div>
-        <div role="tablist" aria-label="Sets" className="flex rounded-lg bg-muted p-1 max-sm:order-3 max-sm:w-full">
+        {hasSet1 && <div role="tablist" aria-label="Sets" className="flex rounded-lg bg-muted p-1 max-sm:order-3 max-sm:w-full">
           {([1, 2] as const).map((n) => (
             <button key={n} role="tab" aria-selected={S.tab === n}
               onClick={() => update((s) => ({ ...s, tab: n }))}
@@ -141,18 +142,18 @@ export function ExamApp({ paper, assessment, startedAt, serverNow, candidate }: 
               Set {n}
             </button>
           ))}
-        </div>
+        </div>}
         <Timer deadline={deadline} skew={skew} onExpire={() => void doSubmit(true)} />
         <Button size="sm" onClick={() => { setSubmitErr(""); setConfirmOpen(true); }}>Finish<span className="max-sm:hidden">&nbsp;test</span></Button>
       </header>
 
       {/* both sets stay mounted, so switching is instant and the editor keeps its state */}
       <div className="relative min-h-0 flex-1">
-        <div className={cn("absolute inset-0", S.tab !== 1 && "hidden")}>
-          <Set1View paper={paper} S={S} update={update} active={S.tab === 1} onDone={() => update((s) => ({ ...s, tab: 2 }))} />
-        </div>
-        <div className={cn("absolute inset-0", S.tab !== 2 && "hidden")}>
-          <Set2View paper={paper} S={S} update={update} getState={getState} active={S.tab === 2} assessmentId={assessment.id} />
+        {hasSet1 && <div className={cn("absolute inset-0", tab !== 1 && "hidden")}>
+          <Set1View paper={paper} S={S} update={update} active={tab === 1} onDone={() => update((s) => ({ ...s, tab: 2 }))} />
+        </div>}
+        <div className={cn("absolute inset-0", tab !== 2 && "hidden")}>
+          <Set2View paper={paper} S={S} update={update} getState={getState} active={tab === 2} assessmentId={assessment.id} />
         </div>
       </div>
 

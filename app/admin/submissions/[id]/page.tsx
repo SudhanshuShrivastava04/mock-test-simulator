@@ -59,10 +59,10 @@ async function Detail({ params }: { params: PageProps<"/admin/submissions/[id]">
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="grid min-w-0 gap-4">
+        {sub.set1.max > 0 ? <section className="grid min-w-0 gap-4">
           <h2 className="text-lg font-semibold">Set 1 by topic</h2>
           <TopicBreakdown set1={sub.set1} />
-        </section>
+        </section> : <div />}
         <Card className="self-start">
           <CardHeader><CardTitle>Account</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
@@ -76,10 +76,10 @@ async function Detail({ params }: { params: PageProps<"/admin/submissions/[id]">
         <ProctorPanel sub={sub} />
       </Suspense>
 
-      <section className="grid grid-cols-1 gap-3">
+      {sub.set1.max > 0 && <section className="grid grid-cols-1 gap-3">
         <h2 className="text-lg font-semibold">Set 1 answers</h2>
         <Set1Answers set1={sub.set1} questions={paper.set1} />
-      </section>
+      </section>}
 
       <section className="grid grid-cols-1 gap-3">
         <h2 className="text-lg font-semibold">Set 2 answers</h2>

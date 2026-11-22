@@ -55,7 +55,7 @@ async function Result({ params }: { params: PageProps<"/dashboard/results/[id]">
         </Alert>
       )}
 
-      {released && (
+      {released && sub.set1.max > 0 && (
         <section className="grid grid-cols-1 gap-3">
           <h2 className="text-lg font-semibold">Set 1 by topic</h2>
           <TopicBreakdown set1={sub.set1} />
@@ -97,7 +97,7 @@ async function Result({ params }: { params: PageProps<"/dashboard/results/[id]">
         })}
       </section>
 
-      {released && (
+      {released && sub.set1.max > 0 && (
         <section className="grid grid-cols-1 gap-3">
           <h2 className="text-lg font-semibold">Set 1: answers with explanations</h2>
           <Set1Answers set1={sub.set1} questions={paper.set1} />

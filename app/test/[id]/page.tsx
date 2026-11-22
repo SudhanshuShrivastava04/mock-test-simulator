@@ -106,10 +106,10 @@ async function Gate({ params }: { params: PageProps<"/test/[id]">["params"] }) {
       <AppMain>
         <p className="text-sm font-medium text-primary">Ready when you are</p>
         <h1 className="mt-1 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{a.title}</h1>
-        <p className="mt-3 flex items-center gap-2 text-muted-foreground"><Clock className="size-4" />{a.durationMinutes} minutes for both sets. The timer starts when you press Begin and keeps running if you close the tab.</p>
+        <p className="mt-3 flex items-center gap-2 text-muted-foreground"><Clock className="size-4" />{a.durationMinutes} minutes{paper.set1.length ? " for both sets" : ""}. The timer starts when you press Begin and keeps running if you close the tab.</p>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <Card>
+        <div className={`mt-8 grid gap-4 ${paper.set1.length ? "md:grid-cols-2" : "max-w-2xl"}`}>
+          {paper.set1.length > 0 && <Card>
             <CardHeader>
               <CardTitle>Set 1 · Multiple choice</CardTitle>
               <CardDescription>{paper.set1.length} questions, {c.set1MarkPerQuestion} mark each{c.set1NegativeMark ? `, −${c.set1NegativeMark} for a wrong answer` : ", no negative marking"}</CardDescription>
@@ -117,10 +117,10 @@ async function Gate({ params }: { params: PageProps<"/test/[id]">["params"] }) {
             <CardContent>
               <ul className="list-disc space-y-0.5 pl-5 text-sm">{Object.entries(topics).map(([k, n]) => <li key={k}>{k}: {n}</li>)}</ul>
             </CardContent>
-          </Card>
+          </Card>}
           <Card>
             <CardHeader>
-              <CardTitle>Set 2 · Coding and written</CardTitle>
+              <CardTitle>{paper.set1.length ? "Set 2 · Coding and written" : "Coding questions"}</CardTitle>
               <CardDescription>{paper.set2.length} questions, {s2marks} marks. Code is tested automatically, then reviewed.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -137,7 +137,7 @@ async function Gate({ params }: { params: PageProps<"/test/[id]">["params"] }) {
           <li>Code runs right in your browser. The first run of each language takes a little longer while it loads.</li>
         </ul>
 
-        <h2 className="mt-10 mb-3 text-lg font-semibold">How Set 2 coding works</h2>
+        <h2 className="mt-10 mb-3 text-lg font-semibold">How the coding questions work</h2>
         <HowItWorks />
 
         {a.proctoring !== false ? (

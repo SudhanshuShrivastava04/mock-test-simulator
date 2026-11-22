@@ -13,7 +13,17 @@ import type { CodingSpec } from "@/lib/types";
 export const PARAM_TYPES = ["int", "long", "double", "bool", "string", "int[]", "long[]", "double[]", "string[]", "int[][]", "ListNode"] as const;
 export type ParamType = (typeof PARAM_TYPES)[number];
 export type Param = { name: string; type: ParamType };
-export type Signature = { method: string; params: Param[]; returns: ParamType };
+/** "void" = the method changes one of its array arguments in place (that argument is what gets checked). */
+export type ReturnType = ParamType | "void";
+export const RETURN_TYPES = [...PARAM_TYPES, "void"] as const;
+export type Signature = { method: string; params: Param[]; returns: ReturnType; inplace?: string };
+
+/** The value a test compares: the return value, or the modified argument for in-place methods. */
+export function outputType(s: Signature): ParamType {
+  if (s.returns !== "void") return s.returns;
+  return (s.params.find((p) => p.name === s.inplace) || s.params[0]).type;
+}
+const outputName = (s: Signature) => (s.params.find((p) => p.name === s.inplace) || s.params[0]).name;
 
 export const TYPE_HELP: Record<ParamType, string> = {
   int: "5", long: "10000000000", double: "2.5", bool: "true", string: '"abc"',
@@ -33,11 +43,15 @@ export function checkSignature(s: Signature): string | null {
     if (!PARAM_TYPES.includes(p.type)) return `Unknown type for ${p.name}.`;
     seen.add(p.name);
   }
-  if (!PARAM_TYPES.includes(s.returns)) return "Pick a return type.";
+  if (!(RETURN_TYPES as readonly string[]).includes(s.returns)) return "Pick a return type.";
+  if (s.returns === "void") {
+    const t = outputType(s);
+    if (!t.endsWith("]") && t !== "ListNode") return "An in-place (void) method must modify a list argument.";
+  }
   return null;
 }
 
-const usesList = (s: Signature) => s.returns === "ListNode" || s.params.some((p) => p.type === "ListNode");
+const usesList = (s: Signature) => outputType(s) === "ListNode" || s.params.some((p) => p.type === "ListNode");
 
 // ── starter code ──
 const PY_T: Record<ParamType, string> = {
@@ -87,18 +101,18 @@ export function starters(s: Signature) {
   const list = usesList(s);
   return {
     python: `${list ? NOTE_PY : ""}class Solution:
-    def ${s.method}(self, ${s.params.map((p) => `${p.name}: ${PY_T[p.type]}`).join(", ")}) -> ${PY_T[s.returns]}:
-        pass
+    def ${s.method}(self, ${s.params.map((p) => `${p.name}: ${PY_T[p.type]}`).join(", ")}) -> ${s.returns === "void" ? "None" : PY_T[s.returns]}:
+${s.returns === "void" ? `        """\n        Do not return anything, modify ${outputName(s)} in-place instead.\n        """\n` : ""}        pass
 `,
     java: `${list ? NOTE_JAVA : ""}class Solution {
-    public ${JAVA_T[s.returns]} ${s.method}(${s.params.map((p) => `${JAVA_T[p.type]} ${p.name}`).join(", ")}) {
+    public ${s.returns === "void" ? "void" : JAVA_T[s.returns]} ${s.method}(${s.params.map((p) => `${JAVA_T[p.type]} ${p.name}`).join(", ")}) {
 
     }
 }
 `,
     cpp: `${list ? NOTE_CPP : ""}class Solution {
 public:
-    ${CPP_T[s.returns]} ${s.method}(${s.params.map((p) => `${cppParam(p.type)} ${p.name}`).join(", ")}) {
+    ${s.returns === "void" ? "void" : CPP_T[s.returns]} ${s.method}(${s.params.map((p) => `${cppParam(p.type)} ${p.name}`).join(", ")}) {
 
     }
 };
@@ -332,8 +346,9 @@ def _dr_main():
 ${s.params.map((p) => `        ${p.name} = ${PY_READ[p.type]}`).join("\n")}
         print(f"\\n@@B {i}")
         try:
-            r = Solution().${s.method}(${args})
-            print(f"\\n@@R {i} " + (${PY_CANON[s.returns]}))
+            ${s.returns === "void" ? `Solution().${s.method}(${args})
+            r = ${outputName(s)}` : `r = Solution().${s.method}(${args})`}
+            print(f"\\n@@R {i} " + (${PY_CANON[outputType(s)]}))
         except BaseException as e:
             print(f"\\n@@E {i} {_dr_fmt(e)}")
 _dr_main()
@@ -347,7 +362,8 @@ ${s.params.map((p) => `            ${JAVA_T[p.type]} ${p.name} = ${JAVA_READ[p.t
             System.out.println("\\n@@B " + i);
             Drv.deadline = System.currentTimeMillis() + 5000;
             try {
-                ${JAVA_T[s.returns]} r = new Solution().${s.method}(${args});
+                ${s.returns === "void" ? `new Solution().${s.method}(${args});
+                ${JAVA_T[outputType(s)]} r = ${outputName(s)};` : `${JAVA_T[s.returns]} r = new Solution().${s.method}(${args});`}
                 Drv.deadline = Long.MAX_VALUE;
                 System.out.println("\\n@@R " + i + " " + Canon.of(r));
             } catch (Throwable e) {
@@ -368,7 +384,8 @@ int main() {
 ${s.params.map((p) => `        ${CPP_T[p.type]} ${p.name} = ${CPP_READ[p.type]};`).join("\n")}
         cout << "\\n@@B " << i << endl;
         Solution dr_sol;
-        ${CPP_T[s.returns]} r = dr_sol.${s.method}(${args});
+        ${s.returns === "void" ? `dr_sol.${s.method}(${args});
+        ${CPP_T[outputType(s)]} r = ${outputName(s)};` : `${CPP_T[s.returns]} r = dr_sol.${s.method}(${args});`}
         cout << "\\n@@R " << i << " " << dr_c(r) << endl;
     }
     return 0;
@@ -383,6 +400,8 @@ export function buildDsaSpec(s: Signature, unordered: boolean): Omit<CodingSpec,
     kind: "dsa",
     output: "raw",
     unordered,
+    // decimals are compared within 1e-5 (like LeetCode), not digit by digit
+    approx: outputType(s) === "double" || outputType(s) === "double[]",
     signature: s,
     starter: starters(s),
     prelude: { python: PY_PRELUDE, java: JAVA_PRELUDE, cpp: CPP_PRELUDE },
@@ -436,18 +455,37 @@ export function canon(t: ParamType, v: unknown): string {
   }
 }
 
-export const showArgs = (s: Signature, args: unknown[]) => s.params.map((p, i) => `${p.name} = ${JSON.stringify(args[i])}`).join(", ");
+const showVal = (t: ParamType, v: unknown) =>
+  t === "double" && Number.isInteger(v) ? (v as number).toFixed(1)
+  : t === "double[]" ? `[${(v as number[]).map((x) => (Number.isInteger(x) ? x.toFixed(1) : String(x))).join(",")}]`
+  : JSON.stringify(v);
+export const showArgs = (s: Signature, args: unknown[]) => s.params.map((p, i) => `${p.name} = ${showVal(p.type, args[i])}`).join(", ");
 
-/** Compares two canonical results; with `unordered`, a top-level list may come back in any order. */
-export function sameAnswer(got: string, expected: string, unordered?: boolean) {
+type Compare = { unordered?: boolean; approx?: boolean };
+
+const close = (a: unknown, b: unknown): boolean => {
+  if (typeof a === "number" && typeof b === "number") return Math.abs(a - b) <= 1e-5 * Math.max(1, Math.abs(b));
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => close(x, b[i]));
+  return JSON.stringify(a) === JSON.stringify(b);
+};
+
+/**
+ * Compares two canonical results. `unordered`: a top-level list may come back in any order.
+ * `approx`: numbers match within 1e-5 (relative for large values).
+ */
+export function sameAnswer(got: string, expected: string, opts?: boolean | Compare) {
+  const o: Compare = typeof opts === "boolean" ? { unordered: opts } : opts || {};
   if (got === expected) return true;
-  if (!unordered) return false;
+  if (!o.unordered && !o.approx) return false;
   try {
-    const a = JSON.parse(got), b = JSON.parse(expected);
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-    const key = (x: unknown) => JSON.stringify(x);
-    const sa = a.map(key).sort(), sb = b.map(key).sort();
-    return sa.every((x, i) => x === sb[i]);
+    let a = JSON.parse(got), b = JSON.parse(expected);
+    if (o.unordered) {
+      if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+      const key = (x: unknown) => JSON.stringify(x);
+      a = [...a].sort((x, y) => (key(x) < key(y) ? -1 : 1));
+      b = [...b].sort((x, y) => (key(x) < key(y) ? -1 : 1));
+    }
+    return o.approx ? close(a, b) : JSON.stringify(a) === JSON.stringify(b);
   } catch {
     return false;
   }

@@ -19,14 +19,26 @@ export const judgeConfigured = () => !!process.env.JUDGE_SNAPSHOT_ID;
 
 async function withSandbox<T>(fn: (sb: Sandbox) => Promise<T>): Promise<T> {
   if (!process.env.JUDGE_SNAPSHOT_ID) throw new Error("The grading server isn't set up yet (JUDGE_SNAPSHOT_ID is missing).");
-  const sb = await Sandbox.create({
-    source: { type: "snapshot", snapshotId: process.env.JUDGE_SNAPSHOT_ID },
+  const create = () => Sandbox.create({
+    source: { type: "snapshot", snapshotId: process.env.JUDGE_SNAPSHOT_ID! },
     region: (process.env.JUDGE_REGION || "bom1") as never,
     resources: { vcpus: 2 },
     timeout: 3 * 60_000,
     networkPolicy: "deny-all", // candidate code can't reach the internet
     persistent: false,
   });
+  // The Hobby plan runs at most 10 sandboxes at once. When busy (HTTP 429), wait and retry for up
+  // to ~60 s; a grading run takes ~5 s, so a burst of Submits just queues for a few seconds.
+  let sb: Sandbox | undefined;
+  for (let attempt = 0, started = Date.now(); !sb; attempt++) {
+    try {
+      sb = await create();
+    } catch (e) {
+      const busy = /\b429\b|concurrency limit|rate limit/i.test(String((e as Error).message));
+      if (!busy || Date.now() - started > 60_000) throw busy ? new Error("The grading server is busy. Please press Submit again in a moment.") : e;
+      await new Promise((r) => setTimeout(r, Math.min(8000, 800 * 2 ** Math.min(attempt, 3)) + Math.random() * 700));
+    }
+  }
   try {
     return await fn(sb);
   } finally {
@@ -56,11 +68,11 @@ function parseMarkers(text: string): Parsed {
 }
 
 type Raw = { status: "ok" | "crash" | "tle"; exit?: number; out: string; err: string; ms: number };
-function verdict(raw: Raw, expected: unknown, lang: string, unordered?: boolean): Verdict {
+function verdict(raw: Raw, expected: unknown, lang: string, cmp: { unordered?: boolean; approx?: boolean }): Verdict {
   const p = parseMarkers(raw.out);
   const stdout = p.stdout.replace(/\n+$/, "");
   if (p.error) return { status: /^Time limit exceeded/.test(p.error) ? "tle" : "error", error: p.error, stdout };
-  if (p.done) return { status: p.got !== null && sameAnswer(p.got, String(expected), unordered) ? "pass" : "fail", got: p.got, stdout };
+  if (p.done) return { status: p.got !== null && sameAnswer(p.got, String(expected), cmp) ? "pass" : "fail", got: p.got, stdout };
   if (raw.status === "tle") return { status: "tle", error: "Time limit exceeded", stdout };
   const sig = raw.exit !== undefined && raw.exit < 0 ? -raw.exit : 0;
   const tail = raw.err.trim().split("\n").filter(Boolean).slice(-3).join("\n");
@@ -104,7 +116,7 @@ export async function judgeDSA(lang: "python" | "java" | "cpp", code: string, sp
     let res: { compileError: string; results: Raw[] };
     try { res = JSON.parse(r.out); } catch { throw new Error("The grading server returned an unexpected response."); }
     if (res.compileError) return { compileError: tidyCompile(lang, res.compileError), results: [], ms: Date.now() - t0 };
-    return { results: res.results.map((raw, i) => verdict(raw, tests[i].expected, lang, spec.unordered)), ms: Date.now() - t0 };
+    return { results: res.results.map((raw, i) => verdict(raw, tests[i].expected, lang, { unordered: spec.unordered, approx: spec.approx })), ms: Date.now() - t0 };
   });
 }
 
