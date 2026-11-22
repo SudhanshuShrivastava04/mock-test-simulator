@@ -58,6 +58,8 @@ const BUILTIN: Record<string, Paper> = {
   },
 };
 
+export const BUILTIN_PAPER_IDS = Object.keys(BUILTIN);
+
 /** Set 1 grading for any paper: +mark per right answer, −negative per wrong one, skipped = 0. */
 function grader(set1: Mcq[], mark: number, negative: number): Paper["gradeSet1"] {
   return (answers) => {

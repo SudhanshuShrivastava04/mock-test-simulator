@@ -1,6 +1,6 @@
 import "server-only";
 import { cmd, parse, pipe, values } from "@/lib/kv";
-import { DEFAULT_PAPER, getPaper } from "@/lib/papers";
+import { BUILTIN_PAPER_IDS, DEFAULT_PAPER, getPaper } from "@/lib/papers";
 import type { Assessment, Attempt, Student, Submission } from "@/lib/types";
 
 // ── Redis layout ──
@@ -18,22 +18,26 @@ export const normEmail = (e: string) => e.trim().toLowerCase();
 export const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 // ── assessments ──
+// Every built-in paper gets a ready-to-use assessment (created once; HSETNX never overwrites
+// an existing one, so edits, archiving and invites made by the admin are kept).
 let seeded = false;
 async function seed() {
   if (seeded) return;
-  const p = await getPaper(DEFAULT_PAPER);
-  const a: Assessment = {
-    id: DEFAULT_PAPER,
-    title: p.config.title,
-    paperId: DEFAULT_PAPER,
-    durationMinutes: p.config.durationMinutes,
-    opensAt: null,
-    closesAt: null,
-    releaseResults: false,
-    createdAt: Date.now(),
-    createdBy: "system",
-  };
-  await cmd("HSETNX", H.asmt, a.id, JSON.stringify(a));
+  for (const id of BUILTIN_PAPER_IDS) {
+    const p = await getPaper(id);
+    const a: Assessment = {
+      id,
+      title: p.config.title,
+      paperId: id,
+      durationMinutes: p.config.durationMinutes,
+      opensAt: null,
+      closesAt: null,
+      releaseResults: false,
+      createdAt: Date.now(),
+      createdBy: "system",
+    };
+    await cmd("HSETNX", H.asmt, a.id, JSON.stringify(a));
+  }
   seeded = true;
 }
 
